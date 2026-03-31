@@ -1,90 +1,126 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ChemoJournal</title>
 
 <style>
-  body {
-    margin: 0;
-    font-family: Georgia, serif;
-    background: #f4f1ea;
-    color: #2a2a2a;
-  }
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 16px;
+  background: #f4f1ea;
+}
 
-  .container {
-    max-width: 720px;
-    margin: auto;
-    padding: 18px;
-  }
+.card {
+  background: white;
+  padding: 12px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+}
 
-  .title {
-    font-size: 22px;
-    font-weight: 600;
-    margin-bottom: 12px;
-  }
+button {
+  padding: 10px;
+  margin: 4px 0;
+  width: 100%;
+}
 
-  .card {
-    background: #fffdf9;
-    padding: 16px;
-    margin-bottom: 14px;
-    border-radius: 14px;
-    border: 1px solid #e7e0d6;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
-  }
+input, select {
+  width: 100%;
+  padding: 8px;
+  margin-top: 6px;
+}
+</style>
+</head>
 
-  .bigDate {
-    font-size: 18px;
-    font-weight: bold;
-    margin-bottom: 10px;
-  }
+<body>
 
-  .row {
-    display: flex;
-    gap: 10px;
-  }
+<h2>ChemoJournal</h2>
 
-  button {
-    flex: 1;
-    padding: 10px;
-    border-radius: 10px;
-    border: none;
-    background: #2f2f2f;
-    color: white;
-    font-size: 14px;
-    cursor: pointer;
-  }
+<div class="card">
+  <div id="dateLabel"></div>
+  <button onclick="prev()">Prev</button>
+  <button onclick="next()">Next</button>
+</div>
 
-  button:hover {
-    opacity: 0.9;
-  }
+<div class="card">
+  <input id="symptom" placeholder="symptom">
+  <select id="severity">
+    <option>1</option><option>2</option><option>3</option>
+    <option>4</option><option>5</option><option>6</option>
+    <option>7</option><option>8</option><option>9</option><option>10</option>
+  </select>
 
-  input, select {
-    width: 100%;
-    padding: 10px;
-    margin-top: 10px;
-    border-radius: 10px;
-    border: 1px solid #ddd;
-    font-size: 14px;
-  }
+  <button onclick="add()">Add</button>
+</div>
 
-  .entry {
-    padding: 12px;
-    border-bottom: 1px dashed #e6e0d6;
-  }
+<div class="card">
+  <div id="list"></div>
+</div>
 
-  .entry:last-child {
-    border-bottom: none;
-  }
+<script>
+let data = [];
+let date = new Date();
 
-  .meta {
-    font-size: 12px;
-    color: #777;
-  }
+/* SAFE LOAD */
+try {
+  const saved = localStorage.getItem("cj");
+  if (saved) data = JSON.parse(saved);
+  if (!Array.isArray(data)) data = [];
+} catch (e) {
+  data = [];
+}
 
-  .pill {
-    font-size: 11px;
-    background: #eee6da;
-    padding: 3px 8px;
-    border-radius: 999px;
+/* FORMAT */
+function fmt(d){
+  return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();
+}
+
+/* SAVE */
+function save(){
+  localStorage.setItem("cj", JSON.stringify(data));
+}
+
+/* NAV */
+function next(){
+  date.setDate(date.getDate()+1);
+  render();
+}
+
+function prev(){
+  date.setDate(date.getDate()-1);
+  render();
+}
+
+/* ADD */
+function add(){
+  const s = document.getElementById("symptom").value;
+  const sev = document.getElementById("severity").value;
+
+  if(!s) return;
+
+  data.push({
+    symptom:s,
+    severity:sev,
+    date:fmt(date),
+    time:Date.now()
+  });
+
+  document.getElementById("symptom").value="";
+  save();
+  render();
+}
+
+/* RENDER */
+function render(){
+  document.getElementById("dateLabel").innerText =
+    date.toDateString();
+
+  const box = document.getElementById("list");
+  box.innerHTML="";
+
+  const today = fmt(date);
+  const filtered = data.filter(x=>x.date===today);
+
+  if(filtered.length===0){
