@@ -11,48 +11,77 @@
     body {
       margin: 0;
       font-family: 'Inter', sans-serif;
-      background: #f6f1e7; /* paper-like */
-      color: #2b2b2b;
+      background: #f7f3ea;
+      color: #2d2d2d;
     }
 
     header {
-      padding: 18px 22px;
-      font-size: 20px;
-      font-weight: 500;
-      background: #fffaf3;
+      padding: 16px;
+      background: #fffaf0;
       border-bottom: 1px solid #e7dfd2;
+      font-weight: 500;
+      font-size: 18px;
+    }
+
+    .calendar {
+      display: flex;
+      overflow-x: auto;
+      gap: 8px;
+      padding: 10px;
+      background: #fffaf0;
+      border-bottom: 1px solid #e7dfd2;
+    }
+
+    .day {
+      min-width: 70px;
+      padding: 8px;
+      text-align: center;
+      border-radius: 10px;
+      border: 1px solid #e7dfd2;
+      background: white;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .day.active {
+      background: #c8a97e;
+      color: white;
+      border: none;
     }
 
     .container {
       max-width: 720px;
       margin: auto;
-      padding: 18px;
+      padding: 14px;
     }
 
     .card {
-      background: #fffaf3;
+      background: white;
       border: 1px solid #e7dfd2;
       border-radius: 14px;
-      padding: 14px;
-      margin-bottom: 14px;
+      padding: 12px;
+      margin-bottom: 12px;
       box-shadow: 0 1px 2px rgba(0,0,0,0.04);
     }
 
     h3 {
-      margin-top: 0;
-      font-size: 16px;
+      margin: 0 0 10px 0;
+      font-size: 14px;
       font-weight: 500;
     }
 
     input, textarea {
       width: 100%;
-      margin-top: 8px;
-      margin-bottom: 10px;
+      margin: 6px 0;
       padding: 10px;
       border-radius: 10px;
       border: 1px solid #e3d8c8;
-      background: #fff;
-      font-size: 14px;
+      font-size: 13px;
+    }
+
+    textarea {
+      height: 70px;
+      resize: none;
     }
 
     button {
@@ -60,94 +89,149 @@
       padding: 10px;
       border-radius: 10px;
       border: none;
-      background: #c8a97e; /* soft planner accent */
+      background: #b8946d;
       color: white;
       font-weight: 500;
       cursor: pointer;
-    }
-
-    button:hover {
-      background: #b8946d;
+      margin-top: 6px;
     }
 
     .entry {
       padding: 10px;
       border-bottom: 1px dashed #e3d8c8;
-      font-size: 14px;
+      font-size: 13px;
     }
 
     .meta {
-      font-size: 12px;
+      font-size: 11px;
       opacity: 0.7;
+    }
+
+    .section {
+      margin-bottom: 10px;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 20px;
+      background: #f0e6d6;
+      font-size: 11px;
+      margin-top: 4px;
     }
 
   </style>
 </head>
 
 <body>
-  <header>ChemoJournal</header>
 
-  <div class="container">
+<header>ChemoJournal — Planner</header>
 
-    <div class="card">
-      <h3>Today's Entry</h3>
+<div class="calendar" id="calendar"></div>
 
-      <input id="symptom" placeholder="Symptom (e.g. nausea)" />
+<div class="container">
+
+  <div class="card">
+    <h3 id="selectedDateLabel">Today</h3>
+
+    <div class="section">
+      <input id="symptom" placeholder="Symptom" />
       <input id="severity" type="number" placeholder="Severity (1–10)" />
       <input id="cycleDay" type="number" placeholder="Cycle Day" />
-      <textarea id="notes" placeholder="Notes / journal entry..."></textarea>
+      <textarea id="notes" placeholder="Morning / afternoon / evening notes..."></textarea>
 
-      <button onclick="addEntry()">Add to Journal</button>
+      <button onclick="addEntry()">Add Entry</button>
     </div>
-
-    <div class="card">
-      <h3>Journal History</h3>
-      <div id="entries"></div>
-    </div>
-
   </div>
 
-  <script>
-    let data = JSON.parse(localStorage.getItem("chemoData") || "[]");
+  <div class="card">
+    <h3>Entries</h3>
+    <div id="entries"></div>
+  </div>
 
-    function render() {
-      const container = document.getElementById("entries");
-      container.innerHTML = "";
+</div>
 
-      data.slice().reverse().forEach(e => {
-        container.innerHTML += `
-          <div class="entry">
-            <div><b>${e.symptom}</b> — Severity ${e.severity}/10</div>
-            <div class="meta">Cycle Day ${e.cycleDay}</div>
-            <div class="meta">${e.notes}</div>
-          </div>
-        `;
-      });
+<script>
+  let data = JSON.parse(localStorage.getItem("chemoData") || "[]");
+
+  let selectedDate = new Date().toISOString().split("T")[0];
+
+  function getLast7Days() {
+    let days = [];
+    for (let i = 6; i >= 0; i--) {
+      let d = new Date();
+      d.setDate(d.getDate() - i);
+      days.push(d.toISOString().split("T")[0]);
     }
+    return days;
+  }
 
-    function addEntry() {
-      const entry = {
-        symptom: document.getElementById("symptom").value,
-        severity: document.getElementById("severity").value,
-        cycleDay: document.getElementById("cycleDay").value,
-        notes: document.getElementById("notes").value,
-        time: new Date().toISOString()
+  function renderCalendar() {
+    const cal = document.getElementById("calendar");
+    cal.innerHTML = "";
+
+    getLast7Days().forEach(date => {
+      const div = document.createElement("div");
+      div.className = "day" + (date === selectedDate ? " active" : "");
+      div.innerHTML = date.slice(5);
+      div.onclick = () => {
+        selectedDate = date;
+        document.getElementById("selectedDateLabel").innerText = date;
+        renderCalendar();
+        render();
       };
+      cal.appendChild(div);
+    });
+  }
 
-      if (!entry.symptom) return;
+  function render() {
+    const container = document.getElementById("entries");
+    container.innerHTML = "";
 
-      data.push(entry);
-      localStorage.setItem("chemoData", JSON.stringify(data));
+    let filtered = data.filter(e => e.date === selectedDate);
 
-      document.getElementById("symptom").value = "";
-      document.getElementById("severity").value = "";
-      document.getElementById("cycleDay").value = "";
-      document.getElementById("notes").value = "";
-
-      render();
+    if (filtered.length === 0) {
+      container.innerHTML = "<div class='meta'>No entries for this day</div>";
+      return;
     }
+
+    filtered.reverse().forEach(e => {
+      container.innerHTML += `
+        <div class="entry">
+          <div><b>${e.symptom}</b> <span class="pill">${e.severity}/10</span></div>
+          <div class="meta">Cycle Day ${e.cycleDay}</div>
+          <div>${e.notes}</div>
+        </div>
+      `;
+    });
+  }
+
+  function addEntry() {
+    const entry = {
+      date: selectedDate,
+      symptom: document.getElementById("symptom").value,
+      severity: document.getElementById("severity").value,
+      cycleDay: document.getElementById("cycleDay").value,
+      notes: document.getElementById("notes").value,
+      time: new Date().toISOString()
+    };
+
+    if (!entry.symptom) return;
+
+    data.push(entry);
+    localStorage.setItem("chemoData", JSON.stringify(data));
+
+    document.getElementById("symptom").value = "";
+    document.getElementById("severity").value = "";
+    document.getElementById("cycleDay").value = "";
+    document.getElementById("notes").value = "";
 
     render();
-  </script>
+  }
+
+  renderCalendar();
+  render();
+</script>
+
 </body>
 </html>
