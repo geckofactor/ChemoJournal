@@ -1,167 +1,113 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>ChemoJournal</title>
 
 <style>
-body {
-  font-family: Georgia, serif;
-  margin: 0;
-  padding: 16px;
-  color: #2b2b2b;
-  background: #f4f1ea;
+body{
+  font-family: Arial, sans-serif;
+  margin:0;
+  padding:16px;
+  background:#f5f5f5;
 }
 
-/* grid background */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background-image:
-    linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0,0,0,0.05) 1px, transparent 1px);
-  background-size: 24px 24px;
-  pointer-events: none;
-  z-index: 0;
+.card{
+  background:white;
+  padding:12px;
+  margin-bottom:12px;
+  border-radius:8px;
+  border:1px solid #ddd;
 }
 
-h2 {
-  margin-top: 0;
-  position: relative;
-  z-index: 2;
+button, input, select{
+  width:100%;
+  padding:10px;
+  margin-top:8px;
+  box-sizing:border-box;
 }
 
-/* force UI visibility */
-.card {
-  background: #fffdf9;
-  padding: 14px;
-  margin-bottom: 12px;
-  border-radius: 12px;
-  border: 1px solid #e6dfd4;
-  position: relative;
-  z-index: 2;
+button{
+  background:black;
+  color:white;
+  border:none;
+  border-radius:6px;
 }
 
-/* BUTTONS (simple safe version) */
-button {
-  padding: 10px;
-  margin-top: 8px;
-  width: 100%;
-  border-radius: 10px;
-  border: 1px solid #333;
-  background: #2f2f2f;
-  color: white;
-  position: relative;
-  z-index: 2;
-}
-
-button.secondary {
-  background: #777;
-}
-
-input, select {
-  width: 100%;
-  padding: 10px;
-  margin-top: 6px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
-  position: relative;
-  z-index: 2;
-}
-
-.entry {
-  padding: 10px;
-  border-bottom: 1px dashed #ddd;
-}
-
-.meta {
-  font-size: 12px;
-  color: #666;
-}
-
-.pill {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: #eee;
-  font-size: 11px;
-  margin-left: 6px;
+.entry{
+  padding:8px 0;
+  border-bottom:1px solid #eee;
 }
 </style>
 </head>
 
 <body>
 
-<h2>ChemoJournal</h2>
+<h2>ChemoJournal TEST</h2>
 
 <div class="card">
-  <div id="dateLabel">Loading...</div>
-
-  <button onclick="prev()">Previous Day</button>
-  <button onclick="next()">Next Day</button>
-  <button class="secondary" onclick="today()">Today</button>
+  <div id="dateLabel"></div>
+  <button onclick="prev()">Prev</button>
+  <button onclick="next()">Next</button>
+  <button onclick="today()">Today</button>
 </div>
 
 <div class="card">
-  <input id="symptom" placeholder="Enter symptom">
-
+  <input id="symptom" placeholder="symptom">
   <select id="severity">
-    <option value="1">1</option><option value="2">2</option>
-    <option value="3">3</option><option value="4">4</option>
-    <option value="5">5</option><option value="6">6</option>
-    <option value="7">7</option><option value="8">8</option>
-    <option value="9">9</option><option value="10">10</option>
+    <option>1</option><option>2</option><option>3</option>
+    <option>4</option><option>5</option><option>6</option>
+    <option>7</option><option>8</option><option>9</option><option>10</option>
   </select>
-
-  <button onclick="add()">Add Entry</button>
+  <button onclick="add()">Add</button>
 </div>
 
 <div class="card">
-  <div id="list">Loading entries...</div>
+  <div id="list">loading...</div>
 </div>
 
 <script>
-console.log("JS loaded OK");
-
 let data = [];
 let date = new Date();
 
-/* SAFE LOAD */
 try {
-  const saved = localStorage.getItem("cj");
-  if (saved) data = JSON.parse(saved);
-  if (!Array.isArray(data)) data = [];
-} catch (e) {
+  data = JSON.parse(localStorage.getItem("cj") || "[]");
+} catch(e){
   data = [];
 }
 
 function fmt(d){
-  return d.getFullYear() + "-" + (d.getMonth()+1) + "-" + d.getDate();
+  return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();
 }
 
 function save(){
   localStorage.setItem("cj", JSON.stringify(data));
 }
 
-function next(){
-  date.setDate(date.getDate() + 1);
-  render();
-}
+function render(){
+  document.getElementById("dateLabel").innerText = date.toDateString();
 
-function prev(){
-  date.setDate(date.getDate() - 1);
-  render();
-}
+  const list = document.getElementById("list");
+  list.innerHTML = "";
 
-function today(){
-  date = new Date();
-  render();
+  const filtered = data.filter(x => x.date === fmt(date));
+
+  if(filtered.length === 0){
+    list.innerHTML = "No entries";
+    return;
+  }
+
+  filtered.forEach(e => {
+    const div = document.createElement("div");
+    div.className = "entry";
+    div.innerHTML = e.symptom + " (Severity " + e.severity + ")";
+    list.appendChild(div);
+  });
 }
 
 function add(){
-  const symptom = document.getElementById("symptom").value.trim();
+  const symptom = document.getElementById("symptom").value;
   const severity = document.getElementById("severity").value;
 
   if(!symptom) return;
@@ -173,4 +119,15 @@ function add(){
     time: Date.now()
   });
 
-  document.getElementById("symptom").value
+  save();
+  document.getElementById("symptom").value = "";
+  render();
+}
+
+function next(){
+  date.setDate(date.getDate()+1);
+  render();
+}
+
+function prev(){
+  date.setDate(date
