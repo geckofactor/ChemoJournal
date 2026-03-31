@@ -21,27 +21,23 @@ body {
   padding: 22px;
 }
 
-/* ✨ Title upgrade */
 .title {
-  font-size: 30px;
+  font-size: 28px;
   font-weight: 600;
-  letter-spacing: -0.5px;
 }
 
 .subtitle {
   font-size: 12px;
-  color: #6b6b6b;
-  margin-bottom: 18px;
+  color: #666;
+  margin-bottom: 16px;
 }
 
-/* ✨ Cleaner cards (less foggy, more solid) */
 .card {
-  background: #ffffff;
+  background: #fff;
   border: 1px solid #e2d9cc;
   border-radius: 14px;
   padding: 14px;
   margin-bottom: 12px;
-  box-shadow: 0 1px 0 rgba(0,0,0,0.03);
 }
 
 /* inputs */
@@ -53,14 +49,9 @@ input, select, textarea {
   border: 1px solid #d6cdbc;
   font-size: 14px;
   background: #fff;
-  outline: none;
 }
 
-input:focus, select:focus, textarea:focus {
-  border-color: #b7a892;
-}
-
-/* ✨ Buttons improved */
+/* buttons */
 button {
   width: 100%;
   margin-top: 8px;
@@ -70,22 +61,37 @@ button {
   background: #2a2a2a;
   color: white;
   font-weight: 500;
-  cursor: pointer;
-  transition: 0.15s ease;
 }
 
-button:hover {
-  background: #1f1f1f;
-}
-
-/* nav row */
+/* ✅ FIXED SEGMENTED MENU */
 .row {
   display: flex;
-  gap: 10px;
+  justify-content: center;
+  gap: 0;
+  border: 1px solid #d6cdbc;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-top: 8px;
 }
 
 .row button {
   flex: 1;
+  margin: 0;
+  border-radius: 0;
+  border: none;
+  border-right: 1px solid #d6cdbc;
+  background: #fff;
+  color: #2a2a2a;
+  padding: 10px 0;
+  font-weight: 500;
+}
+
+.row button:last-child {
+  border-right: none;
+}
+
+.row button:hover {
+  background: #f3ede3;
 }
 
 /* entries */
@@ -123,6 +129,7 @@ button:hover {
 
   <div class="card">
     <input id="symptom" placeholder="Symptom" />
+
     <select id="severity"></select>
 
     <select id="mood">
@@ -133,118 +140,4 @@ button:hover {
       <option>Tired</option>
     </select>
 
-    <input id="med" placeholder="Medication" />
-    <textarea id="notes" rows="3" placeholder="Notes"></textarea>
-
-    <button onclick="add()">Add Entry</button>
-  </div>
-
-  <div class="card">
-    <div id="list"></div>
-  </div>
-
-</div>
-
-<script>
-(function () {
-
-  let db = JSON.parse(localStorage.getItem("CHEMOJOURNAL_DB") || "{}");
-  let date = new Date();
-
-  const symptom = document.getElementById("symptom");
-  const severity = document.getElementById("severity");
-  const mood = document.getElementById("mood");
-  const med = document.getElementById("med");
-  const notes = document.getElementById("notes");
-
-  function key(d){ return d.toISOString().split("T")[0]; }
-
-  function save(){
-    localStorage.setItem("CHEMOJOURNAL_DB", JSON.stringify(db));
-  }
-
-  function getDay(){
-    let k = key(date);
-    if(!db[k]) db[k] = [];
-    return db[k];
-  }
-
-  function initSeverity(){
-    severity.innerHTML = "";
-    for(let i=1;i<=10;i++){
-      let o=document.createElement("option");
-      o.value=i;
-      o.textContent=i;
-      severity.appendChild(o);
-    }
-  }
-
-  function render(){
-    document.getElementById("dateLabel").innerText = date.toDateString();
-
-    let list = document.getElementById("list");
-    list.innerHTML = "";
-
-    let day = getDay();
-
-    if(!day.length){
-      list.innerHTML = "<div style='color:#777'>No entries yet</div>";
-      return;
-    }
-
-    day.slice().reverse().forEach(e=>{
-      let div = document.createElement("div");
-      div.className = "entry";
-
-      div.innerHTML = `
-        <b>${e.symptom || "Entry"}</b>
-        <span class="tag">${e.severity || "?"}/10</span>
-        <span class="tag">${e.mood || ""}</span>
-        <div style="font-size:12px;color:#666">${e.med || ""}</div>
-        <div style="font-size:12px;color:#666">${e.notes || ""}</div>
-      `;
-
-      list.appendChild(div);
-    });
-  }
-
-  window.add = function(){
-    let obj = {
-      symptom: symptom.value,
-      severity: severity.value,
-      mood: mood.value,
-      med: med.value,
-      notes: notes.value,
-      time: Date.now()
-    };
-
-    if(!obj.symptom && !obj.notes) return;
-
-    getDay().push(obj);
-    save();
-
-    symptom.value = "";
-    med.value = "";
-    notes.value = "";
-
-    render();
-  };
-
-  window.shift = function(n){
-    date.setDate(date.getDate() + n);
-    render();
-  };
-
-  window.today = function(){
-    date = new Date();
-    render();
-  };
-
-  initSeverity();
-  render();
-
-})();
-</script>
-
-</body>
-</html>
+    <input id="med
