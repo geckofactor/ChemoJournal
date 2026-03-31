@@ -8,49 +8,52 @@
 <style>
   body {
     margin: 0;
-    font-family: Arial, sans-serif;
-    background: #f6f3ef;
-    color: #222;
+    font-family: "Georgia", serif;
+    background: #f4f1ea;
+    color: #2a2a2a;
   }
 
   .container {
-    max-width: 700px;
+    max-width: 720px;
     margin: auto;
-    padding: 16px;
-  }
-
-  .card {
-    background: white;
-    padding: 14px;
-    margin-bottom: 12px;
-    border-radius: 12px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    padding: 18px;
   }
 
   .title {
-    font-size: 20px;
-    font-weight: bold;
-    margin-bottom: 10px;
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    letter-spacing: 0.5px;
+  }
+
+  .card {
+    background: #fffdf9;
+    padding: 16px;
+    margin-bottom: 14px;
+    border-radius: 14px;
+    border: 1px solid #e7e0d6;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
   }
 
   .bigDate {
     font-size: 18px;
-    font-weight: bold;
+    font-weight: 600;
     margin-bottom: 10px;
   }
 
   .row {
     display: flex;
-    gap: 8px;
+    gap: 10px;
   }
 
   button {
     flex: 1;
     padding: 10px;
-    border: none;
     border-radius: 10px;
-    background: #333;
+    border: 1px solid #ddd;
+    background: #2f2f2f;
     color: white;
+    font-size: 14px;
     cursor: pointer;
   }
 
@@ -61,181 +64,27 @@
   input, select {
     width: 100%;
     padding: 10px;
-    margin-top: 8px;
+    margin-top: 10px;
     border-radius: 10px;
     border: 1px solid #ddd;
+    background: #fff;
+    font-size: 14px;
   }
 
   .entry {
-    padding: 10px;
-    border-bottom: 1px solid #eee;
+    padding: 12px;
+    border-bottom: 1px dashed #e6e0d6;
+  }
+
+  .entry:last-child {
+    border-bottom: none;
   }
 
   .meta {
     font-size: 12px;
-    color: #666;
+    color: #777;
+    margin-top: 4px;
   }
 
   .pill {
-    font-size: 11px;
-    background: #eee;
-    padding: 2px 6px;
-    border-radius: 999px;
-    margin-left: 6px;
-  }
-</style>
-</head>
-
-<body>
-
-<div class="container">
-
-  <div class="title">🌿 ChemoJournal</div>
-
-  <!-- NAV -->
-  <div class="card">
-    <div class="bigDate" id="dateLabel"></div>
-
-    <div class="row">
-      <button onclick="prevDay()">←</button>
-      <button onclick="today()">Today</button>
-      <button onclick="nextDay()">→</button>
-    </div>
-
-    <input type="date" id="datePicker" onchange="setDateFromPicker()" />
-  </div>
-
-  <!-- INPUT -->
-  <div class="card">
-    <input id="symptom" placeholder="Symptom (fatigue, nausea...)" />
-
-    <select id="severity">
-      <option value="1">1</option>
-      <option value="2">2</option>
-      <option value="3">3</option>
-      <option value="4">4</option>
-      <option value="5">5</option>
-      <option value="6">6</option>
-      <option value="7">7</option>
-      <option value="8">8</option>
-      <option value="9">9</option>
-      <option value="10">10</option>
-    </select>
-
-    <select id="timeBlock">
-      <option>Morning</option>
-      <option>Afternoon</option>
-      <option>Night</option>
-    </select>
-
-    <button onclick="addEntry()">Add</button>
-  </div>
-
-  <!-- ENTRIES -->
-  <div class="card">
-    <div id="entries"></div>
-  </div>
-
-</div>
-
-<script>
-let data = JSON.parse(localStorage.getItem("cj") || "[]");
-
-let currentDate = new Date();
-
-function format(d) {
-  return d.toISOString().split("T")[0];
-}
-
-function save() {
-  localStorage.setItem("cj", JSON.stringify(data));
-}
-
-function syncPicker() {
-  document.getElementById("datePicker").value = format(currentDate);
-}
-
-function renderDate() {
-  document.getElementById("dateLabel").innerText =
-    currentDate.toDateString();
-}
-
-function today() {
-  currentDate = new Date();
-  render();
-}
-
-function nextDay() {
-  currentDate.setDate(currentDate.getDate() + 1);
-  render();
-}
-
-function prevDay() {
-  currentDate.setDate(currentDate.getDate() - 1);
-  render();
-}
-
-function setDateFromPicker() {
-  const val = document.getElementById("datePicker").value;
-  currentDate = new Date(val + "T00:00:00");
-  render();
-}
-
-function addEntry() {
-  const symptom = document.getElementById("symptom").value.trim();
-  const severity = document.getElementById("severity").value;
-  const timeBlock = document.getElementById("timeBlock").value;
-
-  if (!symptom) return;
-
-  data.push({
-    symptom,
-    severity,
-    timeBlock,
-    date: format(currentDate),
-    created: new Date().toISOString()
-  });
-
-  document.getElementById("symptom").value = "";
-  save();
-  render();
-}
-
-function getEntriesForDay() {
-  return data.filter(x => x.date === format(currentDate));
-}
-
-function render() {
-  renderDate();
-  syncPicker();
-
-  const box = document.getElementById("entries");
-  const day = getEntriesForDay();
-
-  box.innerHTML = "";
-
-  if (day.length === 0) {
-    box.innerHTML = "<div class='meta'>No entries today</div>";
-    return;
-  }
-
-  day.slice().reverse().forEach(e => {
-    const div = document.createElement("div");
-    div.className = "entry";
-
-    div.innerHTML = `
-      <b>${e.symptom}</b>
-      <span class="pill">${e.timeBlock}</span><br>
-      Severity: ${e.severity}<br>
-      <span class="meta">${new Date(e.created).toLocaleTimeString()}</span>
-    `;
-
-    box.appendChild(div);
-  });
-}
-
-render();
-</script>
-
-</body>
-</html>
+    font
