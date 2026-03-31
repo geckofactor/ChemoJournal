@@ -1,16 +1,233 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>ChemoJournal Test</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ChemoJournal</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Inter:wght@300;400;500&display=swap" rel="stylesheet"/>
+
+<style>
+body {
+  margin: 0;
+  font-family: Inter, sans-serif;
+  background: linear-gradient(180deg, #f6f1ea, #efe7dc);
+  color: #2a2a2a;
+}
+
+.container { max-width: 760px; margin: auto; padding: 18px; }
+
+h1 { font-size: 30px; margin: 10px 0; }
+
+.card {
+  background: rgba(255,255,255,0.92);
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 12px;
+  border: 1px solid #e0d2c2;
+}
+
+input, select, textarea, button {
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid #d6c8b8;
+  box-sizing: border-box;
+}
+
+button {
+  background: #222;
+  color: white;
+  border: none;
+}
+
+.tag {
+  display:inline-block;
+  padding:2px 8px;
+  border-radius:999px;
+  background:#eee2d6;
+  font-size:11px;
+  margin-left:5px;
+}
+
+.entry {
+  padding:10px 0;
+  border-bottom:1px dashed #ddd;
+}
+</style>
 </head>
+
 <body>
-  <h1>ChemoJournal LOADED</h1>
 
-  <script>
-    alert("JS is running");
-    console.log("JS is running");
+<div class="container">
 
-    document.body.innerHTML += "<p>Script executed successfully</p>";
-  </script>
+<h1>ChemoJournal</h1>
+
+<div class="card">
+  <div id="dateLabel">Loading...</div>
+
+  <button onclick="shift(-1)">Back</button>
+  <button onclick="today()">Today</button>
+  <button onclick="shift(1)">Forward</button>
+</div>
+
+<div class="card">
+  <input id="symptom" placeholder="Symptom"/>
+  <select id="severity"></select>
+
+  <select id="mood">
+    <option>Neutral</option>
+    <option>Good</option>
+    <option>Bad</option>
+    <option>Anxious</option>
+    <option>Tired</option>
+  </select>
+
+  <input id="med" placeholder="Medication"/>
+  <textarea id="notes" placeholder="Notes"></textarea>
+
+  <button onclick="add()">Add Entry</button>
+</div>
+
+<div class="card">
+  <div id="list"></div>
+</div>
+
+</div>
+
+<script>
+/* =========================
+   SAFE WRAPPER (NO BLANK SCREEN EVER)
+========================= */
+
+let db = {};
+let date = new Date();
+
+/* DOM SAFE ACCESS */
+function el(id){
+  return document.getElementById(id);
+}
+
+/* STORAGE SAFE */
+function loadDB(){
+  try {
+    return JSON.parse(localStorage.getItem("CHEMOJOURNAL_DB") || "{}");
+  } catch (e) {
+    console.error("DB load error", e);
+    return {};
+  }
+}
+
+function saveDB(){
+  try {
+    localStorage.setItem("CHEMOJOURNAL_DB", JSON.stringify(db));
+  } catch (e) {
+    console.error("DB save error", e);
+  }
+}
+
+function key(d){
+  return d.toISOString().split("T")[0];
+}
+
+function getDay(){
+  let k = key(date);
+  if(!db[k]) db[k] = [];
+  return db[k];
+}
+
+/* INIT */
+function initSeverity(){
+  let s = el("severity");
+  for(let i=1;i<=10;i++){
+    let o=document.createElement("option");
+    o.value=i;
+    o.textContent=i;
+    s.appendChild(o);
+  }
+}
+
+/* RENDER (GUARANTEED SAFE) */
+function render(){
+  try {
+    el("dateLabel").innerText = date.toDateString();
+
+    let list = el("list");
+    let day = getDay();
+
+    list.innerHTML = "";
+
+    if(!day || day.length === 0){
+      list.innerHTML = "<div>No entries</div>";
+      return;
+    }
+
+    day.slice().reverse().forEach(e=>{
+      let div = document.createElement("div");
+      div.className = "entry";
+
+      div.innerHTML = `
+        <b>${e.symptom || "Entry"}</b>
+        <span class="tag">${e.severity}/10</span>
+        <span class="tag">${e.mood}</span>
+        <div style="font-size:12px;opacity:0.7">${e.med || ""}</div>
+        <div style="font-size:12px;opacity:0.7">${e.notes || ""}</div>
+      `;
+
+      list.appendChild(div);
+    });
+
+  } catch (err) {
+    console.error("Render error:", err);
+    document.body.innerHTML += "<pre>Render error: " + err.message + "</pre>";
+  }
+}
+
+/* ACTIONS */
+function add(){
+  try {
+    let obj = {
+      symptom: el("symptom").value,
+      severity: el("severity").value,
+      mood: el("mood").value,
+      med: el("med").value,
+      notes: el("notes").value,
+      time: Date.now()
+    };
+
+    if(!obj.symptom && !obj.notes) return;
+
+    getDay().push(obj);
+    saveDB();
+
+    el("symptom").value = "";
+    el("med").value = "";
+    el("notes").value = "";
+
+    render();
+  } catch (e) {
+    console.error("Add error", e);
+  }
+}
+
+function shift(n){
+  date.setDate(date.getDate() + n);
+  render();
+}
+
+function today(){
+  date = new Date();
+  render();
+}
+
+/* BOOT */
+(function start(){
+  db = loadDB();
+  initSeverity();
+  render();
+})();
+</script>
+
 </body>
 </html>
