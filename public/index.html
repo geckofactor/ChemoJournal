@@ -16,13 +16,13 @@
   .container {
     max-width: 900px;
     margin: auto;
-    padding: 20px;
+    padding: 18px;
   }
 
   .title {
     font-size: 22px;
     font-weight: 600;
-    margin: 20px 0 10px;
+    margin: 10px 0 14px;
   }
 
   .card {
@@ -49,21 +49,6 @@
     cursor: pointer;
   }
 
-  button:hover {
-    opacity: 0.9;
-  }
-
-  .entry {
-    padding: 10px;
-    border-bottom: 1px solid #eee;
-    font-size: 14px;
-  }
-
-  .meta {
-    font-size: 13px;
-    color: #666;
-  }
-
   .grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -75,6 +60,26 @@
       grid-template-columns: 1fr 1fr;
     }
   }
+
+  .entry {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+  }
+
+  .meta {
+    font-size: 12px;
+    color: #666;
+  }
+
+  .pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    background: #eee;
+    margin-top: 4px;
+  }
 </style>
 </head>
 
@@ -83,12 +88,12 @@
 
   <div class="title">🌿 ChemoJournal</div>
 
-  <!-- INPUT CARD -->
+  <!-- INPUT -->
   <div class="card">
-    <div class="meta">Log today’s symptom</div>
+    <div class="meta">Log symptom for today</div>
 
-    <input id="symptom" placeholder="Symptom (e.g. nausea)" />
-    
+    <input id="symptom" placeholder="Symptom (e.g. fatigue)" />
+
     <select id="severity">
       <option value="1">Severity 1</option>
       <option value="2">Severity 2</option>
@@ -100,6 +105,12 @@
       <option value="8">Severity 8</option>
       <option value="9">Severity 9</option>
       <option value="10">Severity 10</option>
+    </select>
+
+    <select id="timeBlock">
+      <option value="Morning">Morning 🌅</option>
+      <option value="Afternoon">Afternoon 🌤</option>
+      <option value="Night">Night 🌙</option>
     </select>
 
     <button onclick="addEntry()">Add Entry</button>
@@ -133,12 +144,14 @@ function save() {
 function addEntry() {
   let symptom = document.getElementById("symptom").value;
   let severity = document.getElementById("severity").value;
+  let timeBlock = document.getElementById("timeBlock").value;
 
   if (!symptom) return;
 
   data.push({
     symptom,
     severity,
+    timeBlock,
     time: new Date().toISOString()
   });
 
@@ -166,7 +179,8 @@ function renderEntries() {
     div.className = "entry";
 
     div.innerHTML = `
-      <b>${e.symptom}</b><br>
+      <b>${e.symptom}</b>
+      <span class="pill">${e.timeBlock}</span><br>
       Severity: ${e.severity}<br>
       <span class="meta">${new Date(e.time).toLocaleString()}</span>
     `;
@@ -183,4 +197,38 @@ function renderInsights() {
     return;
   }
 
-  let avg =
+  let avg = (
+    data.reduce((s, e) => s + Number(e.severity), 0) / data.length
+  ).toFixed(1);
+
+  let blockCounts = { Morning: 0, Afternoon: 0, Night: 0 };
+
+  data.forEach(e => {
+    blockCounts[e.timeBlock]++;
+  });
+
+  let topBlock = Object.keys(blockCounts).reduce((a, b) =>
+    blockCounts[a] > blockCounts[b] ? a : b
+  );
+
+  let counts = {};
+  data.forEach(e => {
+    counts[e.symptom] = (counts[e.symptom] || 0) + 1;
+  });
+
+  let topSymptom = Object.keys(counts).reduce((a, b) =>
+    counts[a] > counts[b] ? a : b
+  );
+
+  box.innerHTML = `
+    Avg severity: <b>${avg}/10</b><br><br>
+    Most common symptom: <b>${topSymptom}</b><br><br>
+    Most active time: <b>${topBlock}</b>
+  `;
+}
+
+render();
+</script>
+
+</body>
+</html>
