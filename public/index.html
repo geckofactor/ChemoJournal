@@ -8,28 +8,19 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet"/>
 
 <style>
-/* ===== BASE ===== */
 body {
   margin: 0;
   font-family: Inter, sans-serif;
-  background: #f3efe7; /* flat paper tone */
+  background: #f3efe7;
   color: #1f1f1f;
 }
 
-/* remove fog entirely */
-body::before,
-body::after {
-  display: none;
-}
-
-/* ===== LAYOUT ===== */
 .container {
   max-width: 720px;
   margin: auto;
   padding: 22px;
 }
 
-/* ===== HEADER ===== */
 .title {
   font-size: 28px;
   font-weight: 500;
@@ -42,7 +33,6 @@ body::after {
   margin-bottom: 16px;
 }
 
-/* ===== CARDS (CLEAN + SOLID) ===== */
 .card {
   background: #ffffff;
   border: 1px solid #ded6c8;
@@ -51,7 +41,6 @@ body::after {
   margin-bottom: 12px;
 }
 
-/* ===== INPUTS ===== */
 input, select, textarea {
   width: 100%;
   padding: 10px;
@@ -68,7 +57,6 @@ input:focus, select:focus, textarea:focus {
   border-color: #9c8f7a;
 }
 
-/* ===== BUTTONS ===== */
 button {
   width: 100%;
   margin-top: 8px;
@@ -77,191 +65,4 @@ button {
   border: none;
   background: #2b2b2b;
   color: white;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-button:hover {
-  background: #1f1f1f;
-}
-
-/* ===== ENTRY LIST ===== */
-.entry {
-  padding: 10px 0;
-  border-bottom: 1px solid #eee;
-}
-
-.tag {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: #f0e7db;
-  font-size: 11px;
-  margin-left: 6px;
-}
-
-/* ===== NAV ROW ===== */
-.row {
-  display: flex;
-  gap: 8px;
-}
-
-.row button {
-  width: 100%;
-}
-
-/* ===== LABELS ===== */
-.label {
-  font-size: 11px;
-  color: #666;
-  margin-top: 6px;
-}
-</style>
-</head>
-
-<body>
-
-<div class="container">
-
-  <div class="title">ChemoJournal</div>
-  <div class="subtitle">daily health tracking journal</div>
-
-  <div class="card">
-    <div id="dateLabel"></div>
-
-    <div class="row">
-      <button onclick="shift(-1)">‹</button>
-      <button onclick="today()">Today</button>
-      <button onclick="shift(1)">›</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="label">Symptom</div>
-    <input id="symptom" placeholder="How are you feeling?" />
-
-    <div class="label">Severity</div>
-    <select id="severity"></select>
-
-    <div class="label">Mood</div>
-    <select id="mood">
-      <option>Neutral</option>
-      <option>Good</option>
-      <option>Bad</option>
-      <option>Anxious</option>
-      <option>Tired</option>
-    </select>
-
-    <div class="label">Medication</div>
-    <input id="med" placeholder="Optional" />
-
-    <div class="label">Notes</div>
-    <textarea id="notes" rows="3"></textarea>
-
-    <button onclick="add()">Add Entry</button>
-  </div>
-
-  <div class="card">
-    <div id="list"></div>
-  </div>
-
-</div>
-
-<script>
-let db = JSON.parse(localStorage.getItem("CHEMOJOURNAL_DB") || "{}");
-let date = new Date();
-
-const symptom = document.getElementById("symptom");
-const severity = document.getElementById("severity");
-const mood = document.getElementById("mood");
-const med = document.getElementById("med");
-const notes = document.getElementById("notes");
-
-function key(d){ return d.toISOString().split("T")[0]; }
-
-function save(){
-  localStorage.setItem("CHEMOJOURNAL_DB", JSON.stringify(db));
-}
-
-function getDay(){
-  let k = key(date);
-  if(!db[k]) db[k] = [];
-  return db[k];
-}
-
-function initSeverity(){
-  for(let i=1;i<=10;i++){
-    let o=document.createElement("option");
-    o.value=i;
-    o.textContent=i;
-    severity.appendChild(o);
-  }
-}
-
-function render(){
-  document.getElementById("dateLabel").innerText = date.toDateString();
-
-  let list = document.getElementById("list");
-  list.innerHTML = "";
-
-  let day = getDay();
-
-  if(!day.length){
-    list.innerHTML = "<div style='color:#777;font-size:13px;'>No entries yet.</div>";
-    return;
-  }
-
-  day.slice().reverse().forEach(e=>{
-    let div = document.createElement("div");
-    div.className = "entry";
-
-    div.innerHTML = `
-      <b>${e.symptom || "Entry"}</b>
-      <span class="tag">${e.severity}/10</span>
-      <span class="tag">${e.mood}</span>
-      <div style="font-size:12px;color:#666;margin-top:4px">${e.med || ""}</div>
-      <div style="font-size:12px;color:#666">${e.notes || ""}</div>
-    `;
-
-    list.appendChild(div);
-  });
-}
-
-function add(){
-  let obj = {
-    symptom: symptom.value,
-    severity: severity.value,
-    mood: mood.value,
-    med: med.value,
-    notes: notes.value,
-    time: Date.now()
-  };
-
-  if(!obj.symptom && !obj.notes) return;
-
-  getDay().push(obj);
-  save();
-
-  symptom.value = "";
-  med.value = "";
-  notes.value = "";
-
-  render();
-}
-
-function shift(n){
-  date.setDate(date.getDate() + n);
-  render();
-}
-
-function today(){
-  date = new Date();
-  render();
-}
-
-initSeverity();
-render();
-</script>
-
-</body>
-</html>
+  font
