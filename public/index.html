@@ -5,57 +5,59 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ChemoJournal</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 
 <style>
 body {
   margin: 0;
-  padding: 18px;
+  padding: 20px;
   font-family: Inter, sans-serif;
-  background: #f7f3ee;
+  background: #f6f1ea;
   color: #2b2b2b;
 }
 
-/* soft paper texture */
+/* Washi paper texture */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   background-image:
-    radial-gradient(#e6dfd6 1px, transparent 1px);
+    radial-gradient(#e7dfd6 1px, transparent 1px),
+    linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px);
   background-size: 18px 18px;
-  opacity: 0.4;
   pointer-events: none;
+  opacity: 0.6;
 }
 
-h2 {
+h1 {
   font-family: "Yuji Syuku", serif;
-  font-size: 28px;
+  font-size: 32px;
   margin: 0 0 12px 0;
 }
 
 .card {
-  background: rgba(255,255,255,0.85);
-  backdrop-filter: blur(6px);
+  background: rgba(255,255,255,0.88);
   border: 1px solid #e6ddd2;
-  border-radius: 16px;
+  border-radius: 18px;
   padding: 14px;
   margin-bottom: 14px;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.05);
+  backdrop-filter: blur(6px);
 }
 
-button, input, select {
+input, select, button {
   width: 100%;
-  padding: 10px;
-  margin-top: 8px;
+  padding: 11px;
+  margin-top: 10px;
   border-radius: 12px;
   border: 1px solid #d8cfc4;
   font-size: 14px;
-  background: #fff;
+  box-sizing: border-box;
 }
 
 button {
-  background: #3b3b3b;
+  background: #2f2f2f;
   color: white;
   border: none;
   font-weight: 500;
@@ -88,7 +90,7 @@ button:active {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #eee3d6;
+  background: #eee2d6;
   font-size: 11px;
   margin-left: 6px;
 }
@@ -97,20 +99,20 @@ button:active {
 
 <body>
 
-<h2>ChemoJournal</h2>
+<h1>ChemoJournal</h1>
 
 <div class="card">
   <div id="dateLabel"></div>
 
   <div class="nav">
-    <button onclick="prev()">◀</button>
+    <button onclick="prev()">‹</button>
     <button onclick="today()">Today</button>
-    <button onclick="next()">▶</button>
+    <button onclick="next()">›</button>
   </div>
 </div>
 
 <div class="card">
-  <input id="symptom" placeholder="How are you feeling?">
+  <input id="symptom" placeholder="How are you feeling today?">
 
   <select id="severity">
     <option value="1">1 - very mild</option>
@@ -133,7 +135,7 @@ button:active {
 </div>
 
 <script>
-let data = JSON.parse(localStorage.getItem("cj_data") || "[]");
+let data = JSON.parse(localStorage.getItem("cj_final") || "[]");
 let currentDate = new Date();
 
 function formatDate(d){
@@ -141,7 +143,7 @@ function formatDate(d){
 }
 
 function save(){
-  localStorage.setItem("cj_data", JSON.stringify(data));
+  localStorage.setItem("cj_final", JSON.stringify(data));
 }
 
 function render(){
@@ -154,9 +156,61 @@ function render(){
   const filtered = data.filter(e => e.date === formatDate(currentDate));
 
   if(filtered.length === 0){
-    list.innerHTML = "No entries for this day ✿";
+    list.innerHTML = "No entries for today ✿";
     return;
   }
 
   filtered.slice().reverse().forEach(e => {
-    const div =
+    const div = document.createElement("div");
+    div.className = "entry";
+
+    div.innerHTML = `
+      <div>
+        ${e.symptom}
+        <span class="tag">Severity ${e.severity}</span>
+      </div>
+      <div class="meta">${new Date(e.time).toLocaleString()}</div>
+    `;
+
+    list.appendChild(div);
+  });
+}
+
+function addEntry(){
+  const symptom = document.getElementById("symptom").value.trim();
+  const severity = document.getElementById("severity").value;
+
+  if(!symptom) return;
+
+  data.push({
+    symptom,
+    severity,
+    date: formatDate(currentDate),
+    time: Date.now()
+  });
+
+  save();
+  document.getElementById("symptom").value = "";
+  render();
+}
+
+function next(){
+  currentDate.setDate(currentDate.getDate()+1);
+  render();
+}
+
+function prev(){
+  currentDate.setDate(currentDate.getDate()-1);
+  render();
+}
+
+function today(){
+  currentDate = new Date();
+  render();
+}
+
+render();
+</script>
+
+</body>
+</html>
