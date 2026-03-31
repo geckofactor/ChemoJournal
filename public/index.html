@@ -22,9 +22,8 @@ body {
 }
 
 .title {
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 500;
-  margin-bottom: 4px;
 }
 
 .subtitle {
@@ -34,10 +33,10 @@ body {
 }
 
 .card {
-  background: #ffffff;
-  border: 1px solid #ded6c8;
-  border-radius: 14px;
-  padding: 14px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 12px;
   margin-bottom: 12px;
 }
 
@@ -46,15 +45,8 @@ input, select, textarea {
   padding: 10px;
   margin-top: 8px;
   border-radius: 10px;
-  border: 1px solid #cfc6b8;
+  border: 1px solid #ccc;
   font-size: 14px;
-  background: #fff;
-  color: #1f1f1f;
-  outline: none;
-}
-
-input:focus, select:focus, textarea:focus {
-  border-color: #9c8f7a;
 }
 
 button {
@@ -65,4 +57,183 @@ button {
   border: none;
   background: #2b2b2b;
   color: white;
-  font
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+}
+
+.row button {
+  flex: 1;
+}
+
+.entry {
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.tag {
+  font-size: 11px;
+  background: #eee;
+  padding: 2px 6px;
+  border-radius: 999px;
+  margin-left: 6px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="title">ChemoJournal</div>
+  <div class="subtitle">daily symptom tracker</div>
+
+  <div class="card">
+    <div id="dateLabel">Loading...</div>
+
+    <div class="row">
+      <button onclick="shift(-1)">‹</button>
+      <button onclick="today()">Today</button>
+      <button onclick="shift(1)">›</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <input id="symptom" placeholder="Symptom" />
+    <select id="severity"></select>
+
+    <select id="mood">
+      <option>Neutral</option>
+      <option>Good</option>
+      <option>Bad</option>
+      <option>Anxious</option>
+      <option>Tired</option>
+    </select>
+
+    <input id="med" placeholder="Medication" />
+    <textarea id="notes" rows="3" placeholder="Notes"></textarea>
+
+    <button onclick="add()">Add Entry</button>
+  </div>
+
+  <div class="card">
+    <div id="list">Loading entries...</div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  try {
+
+    let db = JSON.parse(localStorage.getItem("CHEMOJOURNAL_DB") || "{}");
+    let date = new Date();
+
+    const symptom = document.getElementById("symptom");
+    const severity = document.getElementById("severity");
+    const mood = document.getElementById("mood");
+    const med = document.getElementById("med");
+    const notes = document.getElementById("notes");
+
+    function key(d){ return d.toISOString().split("T")[0]; }
+
+    function save(){
+      localStorage.setItem("CHEMOJOURNAL_DB", JSON.stringify(db));
+    }
+
+    function getDay(){
+      let k = key(date);
+      if(!db[k]) db[k] = [];
+      return db[k];
+    }
+
+    function initSeverity(){
+      severity.innerHTML = "";
+      for(let i=1;i<=10;i++){
+        let o=document.createElement("option");
+        o.value=i;
+        o.textContent=i;
+        severity.appendChild(o);
+      }
+    }
+
+    function render(){
+      document.getElementById("dateLabel").innerText = date.toDateString();
+
+      let list = document.getElementById("list");
+      list.innerHTML = "";
+
+      let day = getDay();
+
+      if(!day || day.length === 0){
+        list.innerHTML = "<div style='color:#777'>No entries yet</div>";
+        return;
+      }
+
+      day.slice().reverse().forEach(e=>{
+        let div = document.createElement("div");
+        div.className = "entry";
+
+        div.innerHTML = `
+          <b>${e.symptom || "Entry"}</b>
+          <span class="tag">${e.severity || "?"}/10</span>
+          <span class="tag">${e.mood || ""}</span>
+          <div style="font-size:12px;color:#666">${e.med || ""}</div>
+          <div style="font-size:12px;color:#666">${e.notes || ""}</div>
+        `;
+
+        list.appendChild(div);
+      });
+    }
+
+    window.add = function(){
+      try {
+        let obj = {
+          symptom: symptom.value,
+          severity: severity.value,
+          mood: mood.value,
+          med: med.value,
+          notes: notes.value,
+          time: Date.now()
+        };
+
+        if(!obj.symptom && !obj.notes) return;
+
+        getDay().push(obj);
+        save();
+
+        symptom.value = "";
+        med.value = "";
+        notes.value = "";
+
+        render();
+      } catch(err) {
+        alert("Add failed: " + err.message);
+      }
+    };
+
+    window.shift = function(n){
+      date.setDate(date.getDate() + n);
+      render();
+    };
+
+    window.today = function(){
+      date = new Date();
+      render();
+    };
+
+    initSeverity();
+    render();
+
+    console.log("ChemoJournal LOADED SUCCESSFULLY");
+
+  } catch (e) {
+    document.body.innerHTML = "<pre style='color:red'>CRASH:\n" + e.message + "</pre>";
+  }
+})();
+</script>
+
+</body>
+</html>
