@@ -8,7 +8,7 @@
 <style>
   body {
     margin: 0;
-    font-family: "Georgia", serif;
+    font-family: Georgia, serif;
     background: #f4f1ea;
     color: #2a2a2a;
   }
@@ -23,7 +23,6 @@
     font-size: 22px;
     font-weight: 600;
     margin-bottom: 12px;
-    letter-spacing: 0.5px;
   }
 
   .card {
@@ -37,7 +36,7 @@
 
   .bigDate {
     font-size: 18px;
-    font-weight: 600;
+    font-weight: bold;
     margin-bottom: 10px;
   }
 
@@ -50,15 +49,10 @@
     flex: 1;
     padding: 10px;
     border-radius: 10px;
-    border: 1px solid #ddd;
+    border: none;
     background: #2f2f2f;
     color: white;
     font-size: 14px;
-    cursor: pointer;
-  }
-
-  button:hover {
-    opacity: 0.9;
   }
 
   input, select {
@@ -67,8 +61,6 @@
     margin-top: 10px;
     border-radius: 10px;
     border: 1px solid #ddd;
-    background: #fff;
-    font-size: 14px;
   }
 
   .entry {
@@ -76,15 +68,158 @@
     border-bottom: 1px dashed #e6e0d6;
   }
 
-  .entry:last-child {
-    border-bottom: none;
-  }
-
   .meta {
     font-size: 12px;
     color: #777;
-    margin-top: 4px;
   }
 
   .pill {
-    font
+    font-size: 11px;
+    background: #eee6da;
+    padding: 3px 8px;
+    border-radius: 999px;
+    margin-left: 6px;
+  }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="title">🌿 ChemoJournal</div>
+
+  <div class="card">
+    <div class="bigDate" id="dateLabel"></div>
+
+    <div class="row">
+      <button onclick="prevDay()">←</button>
+      <button onclick="today()">Today</button>
+      <button onclick="nextDay()">→</button>
+    </div>
+
+    <input type="date" id="datePicker" onchange="setDateFromPicker()" />
+  </div>
+
+  <div class="card">
+    <input id="symptom" placeholder="Symptom" />
+
+    <select id="severity">
+      <option value="1">1</option><option value="2">2</option>
+      <option value="3">3</option><option value="4">4</option>
+      <option value="5">5</option><option value="6">6</option>
+      <option value="7">7</option><option value="8">8</option>
+      <option value="9">9</option><option value="10">10</option>
+    </select>
+
+    <select id="timeBlock">
+      <option>Morning</option>
+      <option>Afternoon</option>
+      <option>Night</option>
+    </select>
+
+    <button onclick="addEntry()">Add</button>
+  </div>
+
+  <div class="card">
+    <div id="entries"></div>
+  </div>
+
+</div>
+
+<script>
+let data = [];
+try {
+  data = JSON.parse(localStorage.getItem("cj") || "[]");
+} catch (e) {
+  data = [];
+}
+
+let currentDate = new Date();
+
+/* SAFE DATE FORMAT (avoids ISO timezone bugs) */
+function formatDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/* STORAGE */
+function save() {
+  localStorage.setItem("cj", JSON.stringify(data));
+}
+
+/* NAV */
+function today() {
+  currentDate = new Date();
+  render();
+}
+
+function nextDay() {
+  currentDate.setDate(currentDate.getDate() + 1);
+  render();
+}
+
+function prevDay() {
+  currentDate.setDate(currentDate.getDate() - 1);
+  render();
+}
+
+function setDateFromPicker() {
+  const val = document.getElementById("datePicker").value;
+  if (!val) return;
+  currentDate = new Date(val + "T00:00:00");
+  render();
+}
+
+/* ADD */
+function addEntry() {
+  const symptom = document.getElementById("symptom").value.trim();
+  const severity = document.getElementById("severity").value;
+  const timeBlock = document.getElementById("timeBlock").value;
+
+  if (!symptom) return;
+
+  data.push({
+    symptom,
+    severity,
+    timeBlock,
+    date: formatDate(currentDate),
+    created: new Date().toISOString()
+  });
+
+  document.getElementById("symptom").value = "";
+  save();
+  render();
+}
+
+/* FILTER */
+function getEntries() {
+  return data.filter(x => x.date === formatDate(currentDate));
+}
+
+/* RENDER */
+function render() {
+  const dateLabel = document.getElementById("dateLabel");
+  const picker = document.getElementById("datePicker");
+  const box = document.getElementById("entries");
+
+  if (!dateLabel || !picker || !box) return;
+
+  dateLabel.innerText = currentDate.toDateString();
+  picker.value = formatDate(currentDate);
+
+  const day = getEntries();
+
+  box.innerHTML = "";
+
+  if (day.length === 0) {
+    box.innerHTML = "<div class='meta'>No entries today</div>";
+    return;
+  }
+
+  for (let i = day.length - 1; i >= 0; i--) {
+    const e = day[i];
+
+    const div = document.createElement("div
