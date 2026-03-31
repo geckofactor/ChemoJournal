@@ -1,121 +1,159 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ChemoJournal</title>
 
 <style>
-body{
+body {
   font-family: Arial, sans-serif;
-  margin:0;
-  padding:16px;
-  background:#f5f5f5;
+  margin: 0;
+  padding: 16px;
+  background: #f5f3ef;
+  color: #222;
 }
 
-.card{
-  background:white;
-  padding:12px;
-  margin-bottom:12px;
-  border-radius:8px;
-  border:1px solid #ddd;
+.card {
+  background: white;
+  padding: 12px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
 }
 
-button, input, select{
-  width:100%;
-  padding:10px;
-  margin-top:8px;
-  box-sizing:border-box;
+h2 {
+  margin-top: 0;
 }
 
-button{
-  background:black;
-  color:white;
-  border:none;
-  border-radius:6px;
+input, select, button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+  font-size: 14px;
 }
 
-.entry{
-  padding:8px 0;
-  border-bottom:1px solid #eee;
+button {
+  background: #222;
+  color: white;
+  border: none;
+}
+
+button.secondary {
+  background: #666;
+}
+
+.entry {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.meta {
+  font-size: 12px;
+  color: #666;
+}
+
+.nav {
+  display: flex;
+  gap: 8px;
+}
+
+.nav button {
+  flex: 1;
 }
 </style>
 </head>
 
 <body>
 
-<h2>ChemoJournal TEST</h2>
+<h2>ChemoJournal</h2>
 
 <div class="card">
   <div id="dateLabel"></div>
-  <button onclick="prev()">Prev</button>
-  <button onclick="next()">Next</button>
-  <button onclick="today()">Today</button>
+
+  <div class="nav">
+    <button onclick="prev()">Prev</button>
+    <button onclick="today()">Today</button>
+    <button onclick="next()">Next</button>
+  </div>
 </div>
 
 <div class="card">
-  <input id="symptom" placeholder="symptom">
+  <input id="symptom" placeholder="Symptom">
+
   <select id="severity">
-    <option>1</option><option>2</option><option>3</option>
-    <option>4</option><option>5</option><option>6</option>
-    <option>7</option><option>8</option><option>9</option><option>10</option>
+    <option value="1">1</option>
+    <option value="2">2</option>
+    <option value="3">3</option>
+    <option value="4">4</option>
+    <option value="5">5</option>
+    <option value="6">6</option>
+    <option value="7">7</option>
+    <option value="8">8</option>
+    <option value="9">9</option>
+    <option value="10">10</option>
   </select>
-  <button onclick="add()">Add</button>
+
+  <button onclick="addEntry()">Add Entry</button>
 </div>
 
 <div class="card">
-  <div id="list">loading...</div>
+  <div id="list"></div>
 </div>
 
 <script>
-let data = [];
-let date = new Date();
+let data = JSON.parse(localStorage.getItem("cj_data") || "[]");
+let currentDate = new Date();
 
-try {
-  data = JSON.parse(localStorage.getItem("cj") || "[]");
-} catch(e){
-  data = [];
+function formatDate(d) {
+  return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
 }
 
-function fmt(d){
-  return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();
+function save() {
+  localStorage.setItem("cj_data", JSON.stringify(data));
 }
 
-function save(){
-  localStorage.setItem("cj", JSON.stringify(data));
-}
-
-function render(){
-  document.getElementById("dateLabel").innerText = date.toDateString();
+function render() {
+  document.getElementById("dateLabel").innerText =
+    currentDate.toDateString();
 
   const list = document.getElementById("list");
   list.innerHTML = "";
 
-  const filtered = data.filter(x => x.date === fmt(date));
+  const filtered = data.filter(e => e.date === formatDate(currentDate));
 
-  if(filtered.length === 0){
-    list.innerHTML = "No entries";
+  if (filtered.length === 0) {
+    list.innerHTML = "No entries for this day.";
     return;
   }
 
-  filtered.forEach(e => {
+  filtered.slice().reverse().forEach(e => {
     const div = document.createElement("div");
     div.className = "entry";
-    div.innerHTML = e.symptom + " (Severity " + e.severity + ")";
+
+    div.innerHTML = `
+      <b>${e.symptom}</b>
+      <div>Severity: ${e.severity}</div>
+      <div class="meta">${new Date(e.time).toLocaleString()}</div>
+    `;
+
     list.appendChild(div);
   });
 }
 
-function add(){
-  const symptom = document.getElementById("symptom").value;
+function addEntry() {
+  const symptom = document.getElementById("symptom").value.trim();
   const severity = document.getElementById("severity").value;
 
-  if(!symptom) return;
+  if (!symptom) return;
 
   data.push({
     symptom,
     severity,
-    date: fmt(date),
+    date: formatDate(currentDate),
     time: Date.now()
   });
 
@@ -124,10 +162,23 @@ function add(){
   render();
 }
 
-function next(){
-  date.setDate(date.getDate()+1);
+function next() {
+  currentDate.setDate(currentDate.getDate() + 1);
   render();
 }
 
-function prev(){
-  date.setDate(date
+function prev() {
+  currentDate.setDate(currentDate.getDate() - 1);
+  render();
+}
+
+function today() {
+  currentDate = new Date();
+  render();
+}
+
+render();
+</script>
+
+</body>
+</html>
