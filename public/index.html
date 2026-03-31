@@ -11,17 +11,17 @@
 body {
   margin: 0;
   font-family: Inter, sans-serif;
-  background: #f5f1ea;
-  color: #2b2b2b;
+  background: #f4f0e8;
+  color: #2a2a2a;
 }
 
-/* Japanese paper feel */
+/* Japanese stationery paper */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(#e7dfd6 1px, transparent 1px),
+    radial-gradient(#e6dccf 1px, transparent 1px),
     linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px);
   background-size: 18px 18px;
@@ -29,25 +29,26 @@ body::before {
   pointer-events: none;
 }
 
-h1 {
-  font-family: "Yuji Syuku", serif;
-  font-size: 30px;
-  margin: 10px 0;
+.container {
+  max-width: 760px;
+  margin: auto;
+  padding: 16px;
 }
 
-.wrap {
-  padding: 16px;
-  max-width: 720px;
-  margin: auto;
+h1 {
+  font-family: "Yuji Syuku", serif;
+  font-size: 32px;
+  margin: 10px 0 20px;
 }
 
 .card {
-  background: rgba(255,255,255,0.9);
-  border-radius: 16px;
-  padding: 12px;
-  margin-bottom: 12px;
-  border: 1px solid #e6ddd2;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.05);
+  background: rgba(255,255,255,0.92);
+  border: 1px solid #e5dbcf;
+  border-radius: 18px;
+  padding: 14px;
+  margin-bottom: 14px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.05);
+  backdrop-filter: blur(6px);
 }
 
 .row {
@@ -59,8 +60,8 @@ button, input, select, textarea {
   width: 100%;
   padding: 10px;
   margin-top: 8px;
-  border-radius: 10px;
-  border: 1px solid #d8cfc4;
+  border-radius: 12px;
+  border: 1px solid #d7cbbb;
   font-size: 14px;
   box-sizing: border-box;
 }
@@ -69,6 +70,7 @@ button {
   background: #2f2f2f;
   color: white;
   border: none;
+  cursor: pointer;
 }
 
 button:active { transform: scale(0.98); }
@@ -79,24 +81,24 @@ button:active { transform: scale(0.98); }
 }
 
 .tag {
-  display:inline-block;
-  padding:2px 8px;
-  background:#eee2d6;
-  border-radius:999px;
-  font-size:11px;
-  margin-left:6px;
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eee2d6;
+  font-size: 11px;
+  margin-left: 6px;
 }
 
 .entry {
+  padding: 10px 0;
   border-bottom: 1px dashed #ddd;
-  padding: 8px 0;
 }
 </style>
 </head>
 
 <body>
 
-<div class="wrap">
+<div class="container">
 
 <h1>ChemoJournal</h1>
 
@@ -104,9 +106,9 @@ button:active { transform: scale(0.98); }
   <div id="dateLabel"></div>
 
   <div class="row">
-    <button onclick="changeDay(-1)">‹</button>
-    <button onclick="goToday()">Today</button>
-    <button onclick="changeDay(1)">›</button>
+    <button onclick="shift(-1)">‹</button>
+    <button onclick="today()">Today</button>
+    <button onclick="shift(1)">›</button>
   </div>
 </div>
 
@@ -114,7 +116,7 @@ button:active { transform: scale(0.98); }
   <div class="small">Symptom</div>
   <input id="symptom" placeholder="Enter symptom..." />
 
-  <div class="small">Severity (1–10)</div>
+  <div class="small">Severity</div>
   <select id="severity"></select>
 
   <div class="small">Mood</div>
@@ -127,72 +129,69 @@ button:active { transform: scale(0.98); }
   </select>
 
   <div class="small">Medication</div>
-  <input id="med" placeholder="e.g. Zofran, Tylenol..." />
+  <input id="med" placeholder="Medication (optional)" />
 
   <div class="small">Notes</div>
-  <textarea id="notes" rows="3" placeholder="Write anything..."></textarea>
+  <textarea id="notes" rows="3"></textarea>
 
-  <button onclick="addEntry()">Add Entry</button>
+  <button onclick="add()">Add Entry</button>
 </div>
 
 <div class="card">
-  <div id="entries"></div>
+  <div id="list"></div>
 </div>
 
 </div>
 
 <script>
-let data = JSON.parse(localStorage.getItem("cj_full") || "{}");
-let current = new Date();
+let db = JSON.parse(localStorage.getItem("CHEMOJOURNAL_DB") || "{}");
+let date = new Date();
 
 function key(d){
   return d.toISOString().split("T")[0];
 }
 
 function save(){
-  localStorage.setItem("cj_full", JSON.stringify(data));
+  localStorage.setItem("CHEMOJOURNAL_DB", JSON.stringify(db));
 }
 
 function initSeverity(){
-  let sel = document.getElementById("severity");
+  let s = document.getElementById("severity");
   for(let i=1;i<=10;i++){
-    let o=document.createElement("option");
-    o.value=i;
-    o.textContent=i;
-    sel.appendChild(o);
+    let o = document.createElement("option");
+    o.value = i;
+    o.textContent = i;
+    s.appendChild(o);
   }
 }
 
-function label(){
-  document.getElementById("dateLabel").innerText =
-    current.toDateString();
-}
-
 function getDay(){
-  let k = key(current);
-  if(!data[k]) data[k] = [];
-  return data[k];
+  let k = key(date);
+  if(!db[k]) db[k] = [];
+  return db[k];
 }
 
 function render(){
-  label();
-  let list = document.getElementById("entries");
+  document.getElementById("dateLabel").innerText =
+    date.toDateString();
+
+  let list = document.getElementById("list");
   list.innerHTML = "";
 
   let day = getDay();
 
   if(day.length === 0){
-    list.innerHTML = "<div class='small'>No entries yet.</div>";
+    list.innerHTML = "<div class='small'>No entries for this day.</div>";
     return;
   }
 
   day.slice().reverse().forEach(e=>{
-    let div=document.createElement("div");
-    div.className="entry";
+    let div = document.createElement("div");
+    div.className = "entry";
 
     div.innerHTML = `
       <div><b>${e.symptom || "Entry"}</b>
-      <span class="tag">S:${e.severity}</span>
+      <span class="tag">${e.severity}/10</span>
       <span class="tag">${e.mood}</span></div>
       <div class="small">${e.med || ""}</div>
       <div class="small">${e.notes || ""}</div>
@@ -203,7 +202,7 @@ function render(){
   });
 }
 
-function addEntry(){
+function add(){
   let obj = {
     symptom: symptom.value,
     severity: severity.value,
@@ -218,20 +217,20 @@ function addEntry(){
   getDay().push(obj);
   save();
 
-  symptom.value="";
-  med.value="";
-  notes.value="";
+  symptom.value = "";
+  med.value = "";
+  notes.value = "";
 
   render();
 }
 
-function changeDay(n){
-  current.setDate(current.getDate()+n);
+function shift(n){
+  date.setDate(date.getDate() + n);
   render();
 }
 
-function goToday(){
-  current = new Date();
+function today(){
+  date = new Date();
   render();
 }
 
