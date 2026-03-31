@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>ChemoJournal</title>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <style>
   body {
     margin: 0;
@@ -16,7 +14,7 @@
   }
 
   .container {
-    max-width: 900px;
+    max-width: 800px;
     margin: auto;
     padding: 16px;
   }
@@ -24,7 +22,7 @@
   .title {
     font-size: 22px;
     font-weight: 600;
-    margin: 10px 0;
+    margin: 10px 0 15px;
   }
 
   .card {
@@ -51,13 +49,9 @@
     cursor: pointer;
   }
 
-  button:hover {
-    opacity: 0.9;
-  }
-
   .row {
     display: flex;
-    gap: 10px;
+    gap: 8px;
   }
 
   .row button {
@@ -83,11 +77,6 @@
     background: #eee;
     margin-left: 6px;
   }
-
-  .dateHeader {
-    font-weight: 600;
-    margin-bottom: 8px;
-  }
 </style>
 </head>
 
@@ -96,15 +85,82 @@
 
   <div class="title">🌿 ChemoJournal</div>
 
-  <!-- DATE NAV -->
+  <!-- NAV -->
   <div class="card">
     <div class="row">
-      <button onclick="changeDay(-1)">⬅ Prev</button>
-      <button onclick="today()">Today</button>
-      <button onclick="changeDay(1)">Next ➡</button>
+      <button onclick="changeDay(-1)">⬅</button>
+      <button onclick="goToday()">Today</button>
+      <button onclick="changeDay(1)">➡</button>
     </div>
-    <div class="meta" id="currentDate"></div>
+    <div class="meta" id="dateLabel"></div>
   </div>
 
   <!-- INPUT -->
   <div class="card">
+    <input id="symptom" placeholder="Symptom (e.g. fatigue)" />
+
+    <select id="severity">
+      <option value="1">Severity 1</option>
+      <option value="2">Severity 2</option>
+      <option value="3">Severity 3</option>
+      <option value="4">Severity 4</option>
+      <option value="5">Severity 5</option>
+      <option value="6">Severity 6</option>
+      <option value="7">Severity 7</option>
+      <option value="8">Severity 8</option>
+      <option value="9">Severity 9</option>
+      <option value="10">Severity 10</option>
+    </select>
+
+    <select id="timeBlock">
+      <option>Morning 🌅</option>
+      <option>Afternoon 🌤</option>
+      <option>Night 🌙</option>
+    </select>
+
+    <button onclick="addEntry()">Add Entry</button>
+  </div>
+
+  <!-- ENTRIES -->
+  <div class="card">
+    <div class="meta">Entries</div>
+    <div id="entries"></div>
+  </div>
+
+</div>
+
+<script>
+let data = JSON.parse(localStorage.getItem("cj_data") || "[]");
+
+let currentDate = new Date();
+
+function formatDate(d) {
+  return d.toISOString().split("T")[0];
+}
+
+function save() {
+  localStorage.setItem("cj_data", JSON.stringify(data));
+}
+
+function goToday() {
+  currentDate = new Date();
+  render();
+}
+
+function changeDay(offset) {
+  currentDate.setDate(currentDate.getDate() + offset);
+  render();
+}
+
+function addEntry() {
+  const symptom = document.getElementById("symptom").value;
+  const severity = document.getElementById("severity").value;
+  const timeBlock = document.getElementById("timeBlock").value;
+
+  if (!symptom) return;
+
+  data.push({
+    symptom,
+    severity,
+    timeBlock,
+    date: formatDate(currentDate),
