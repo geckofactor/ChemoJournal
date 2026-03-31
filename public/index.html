@@ -15,7 +15,6 @@ body {
   color: #2a2a2a;
 }
 
-/* paper texture */
 body::before {
   content: "";
   position: fixed;
@@ -29,39 +28,12 @@ body::before {
   pointer-events: none;
 }
 
-/* decorative stamp */
-body::after {
-  content: "✿";
-  position: fixed;
-  bottom: 16px;
-  right: 18px;
-  font-size: 28px;
-  opacity: 0.15;
-  pointer-events: none;
-}
-
-.container {
-  max-width: 760px;
-  margin: auto;
-  padding: 16px;
-}
+.container { max-width: 760px; margin: auto; padding: 16px; }
 
 h1 {
-  font-family: Georgia, "Times New Roman", serif;
   font-size: 34px;
-  letter-spacing: 1px;
   margin: 10px 0 20px;
-  font-weight: 500;
-  position: relative;
-}
-
-h1::after {
-  content: "";
-  display: block;
-  width: 120px;
-  height: 2px;
-  background: linear-gradient(to right, #c8b7a6, transparent);
-  margin-top: 6px;
+  font-family: Georgia, serif;
 }
 
 .card {
@@ -70,64 +42,35 @@ h1::after {
   border-radius: 18px;
   padding: 14px;
   margin-bottom: 14px;
-  box-shadow:
-    0 8px 20px rgba(0,0,0,0.06),
-    inset 0 1px 0 rgba(255,255,255,0.8);
-  backdrop-filter: blur(6px);
-}
-
-.row {
-  display: flex;
-  gap: 10px;
 }
 
 button, input, select, textarea {
   width: 100%;
   padding: 11px;
   margin-top: 8px;
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid #d7cbbb;
   font-size: 14px;
   box-sizing: border-box;
-  background: rgba(255,255,255,0.9);
-  transition: all 0.15s ease;
 }
 
 button {
-  background: linear-gradient(145deg, #3a3a3a, #222);
+  background: #222;
   color: white;
   border: none;
-  font-weight: 500;
-  letter-spacing: 0.3px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
 }
 
-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 14px rgba(0,0,0,0.18);
-}
+.small { font-size: 12px; color: #777; }
 
-button:active {
-  transform: scale(0.98);
-}
-
-.small {
-  font-size: 12px;
-  color: #777;
-}
+.entry { padding: 10px 0; border-bottom: 1px dashed #ddd; }
 
 .tag {
   display: inline-block;
-  padding: 3px 10px;
+  padding: 2px 8px;
   border-radius: 999px;
   background: #eee2d6;
   font-size: 11px;
   margin-left: 6px;
-}
-
-.entry {
-  padding: 10px 0;
-  border-bottom: 1px dashed #ddd;
 }
 </style>
 </head>
@@ -135,5 +78,150 @@ button:active {
 <body>
 
 <div class="container">
+<h1>ChemoJournal</h1>
 
-<h1>ChemoJournal</h
+<div class="card">
+  <div id="dateLabel"></div>
+
+  <button onclick="shift(-1)">Back</button>
+  <button onclick="today()">Today</button>
+  <button onclick="shift(1)">Forward</button>
+</div>
+
+<div class="card">
+  <input id="symptom" placeholder="Symptom"/>
+  <select id="severity"></select>
+
+  <select id="mood">
+    <option>Neutral</option>
+    <option>Good</option>
+    <option>Bad</option>
+    <option>Anxious</option>
+    <option>Tired</option>
+  </select>
+
+  <input id="med" placeholder="Medication"/>
+  <textarea id="notes" placeholder="Notes"></textarea>
+
+  <button onclick="add()">Add Entry</button>
+</div>
+
+<div class="card">
+  <div id="list"></div>
+</div>
+
+</div>
+
+<script>
+/* SAFE STORAGE WRAPPER (prevents blank screen crash) */
+function loadDB(){
+  try {
+    return JSON.parse(localStorage.getItem("CHEMOJOURNAL_DB") || "{}");
+  } catch (e) {
+    console.log("DB reset due to error");
+    return {};
+  }
+}
+
+function saveDB(){
+  try {
+    localStorage.setItem("CHEMOJOURNAL_DB", JSON.stringify(db));
+  } catch (e) {
+    alert("Storage error: " + e.message);
+  }
+}
+
+let db = loadDB();
+let date = new Date();
+
+const symptom = document.getElementById("symptom");
+const severity = document.getElementById("severity");
+const mood = document.getElementById("mood");
+const med = document.getElementById("med");
+const notes = document.getElementById("notes");
+
+function key(d){ return d.toISOString().split("T")[0]; }
+
+function getDay(){
+  let k = key(date);
+  if(!db[k]) db[k] = [];
+  return db[k];
+}
+
+function initSeverity(){
+  for(let i=1;i<=10;i++){
+    let o=document.createElement("option");
+    o.value=i;
+    o.textContent=i;
+    severity.appendChild(o);
+  }
+}
+
+function render(){
+  document.getElementById("dateLabel").innerText = date.toDateString();
+
+  let list = document.getElementById("list");
+  list.innerHTML = "";
+
+  let day = getDay();
+
+  if(!day.length){
+    list.innerHTML = "<div class='small'>No entries.</div>";
+    return;
+  }
+
+  day.slice().reverse().forEach(e=>{
+    let div = document.createElement("div");
+    div.className = "entry";
+
+    div.innerHTML = `
+      <b>${e.symptom || "Entry"}</b>
+      <span class="tag">${e.severity}/10</span>
+      <span class="tag">${e.mood}</span>
+      <div class="small">${e.med || ""}</div>
+      <div class="small">${e.notes || ""}</div>
+    `;
+
+    list.appendChild(div);
+  });
+}
+
+function add(){
+  let obj = {
+    symptom: symptom.value,
+    severity: severity.value,
+    mood: mood.value,
+    med: med.value,
+    notes: notes.value,
+    time: Date.now()
+  };
+
+  if(!obj.symptom && !obj.notes) return;
+
+  getDay().push(obj);
+  saveDB();
+
+  symptom.value = "";
+  med.value = "";
+  notes.value = "";
+
+  render();
+}
+
+function shift(n){
+  date.setDate(date.getDate() + n);
+  render();
+}
+
+function today(){
+  date = new Date();
+  render();
+}
+
+/* INIT */
+initSeverity();
+render();
+</script>
+
+</body>
+</html>
