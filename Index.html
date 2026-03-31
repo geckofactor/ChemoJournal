@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>ChemoJournal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #0f172a;
+      color: white;
+    }
+
+    header {
+      padding: 20px;
+      background: #1e293b;
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .container {
+      padding: 20px;
+      max-width: 700px;
+      margin: auto;
+    }
+
+    .card {
+      background: #1e293b;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 10px;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      margin-top: 8px;
+      padding: 10px;
+      border-radius: 6px;
+      border: none;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 10px;
+      width: 100%;
+      background: #3b82f6;
+      border: none;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .entry {
+      padding: 10px;
+      border-bottom: 1px solid #334155;
+    }
+  </style>
+</head>
+
+<body>
+  <header>ChemoJournal</header>
+
+  <div class="container">
+
+    <div class="card">
+      <h3>Log Symptom</h3>
+
+      <label>Symptom</label>
+      <input id="symptom" placeholder="e.g. nausea, fatigue" />
+
+      <label>Severity (1–10)</label>
+      <input id="severity" type="number" min="1" max="10" />
+
+      <label>Cycle Day</label>
+      <input id="cycleDay" type="number" />
+
+      <label>Notes</label>
+      <textarea id="notes"></textarea>
+
+      <button onclick="addEntry()">Save Entry</button>
+    </div>
+
+    <div class="card">
+      <h3>Entries</h3>
+      <div id="entries"></div>
+    </div>
+
+  </div>
+
+  <script>
+    let data = JSON.parse(localStorage.getItem("chemoData") || "[]");
+
+    function render() {
+      const container = document.getElementById("entries");
+      container.innerHTML = "";
+
+      data.slice().reverse().forEach(e => {
+        container.innerHTML += `
+          <div class="entry">
+            <b>${e.symptom}</b> (Severity: ${e.severity}/10)<br/>
+            Cycle Day: ${e.cycleDay}<br/>
+            <small>${e.notes}</small>
+          </div>
+        `;
+      });
+    }
+
+    function addEntry() {
+      const entry = {
+        symptom: document.getElementById("symptom").value,
+        severity: document.getElementById("severity").value,
+        cycleDay: document.getElementById("cycleDay").value,
+        notes: document.getElementById("notes").value,
+        time: new Date().toISOString()
+      };
+
+      data.push(entry);
+      localStorage.setItem("chemoData", JSON.stringify(data));
+
+      document.getElementById("symptom").value = "";
+      document.getElementById("severity").value = "";
+      document.getElementById("cycleDay").value = "";
+      document.getElementById("notes").value = "";
+
+      render();
+    }
+
+    render();
+  </script>
+</body>
+    </html>
