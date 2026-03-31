@@ -51,6 +51,10 @@
     cursor: pointer;
   }
 
+  button:hover {
+    opacity: 0.9;
+  }
+
   .row {
     display: flex;
     gap: 10px;
@@ -77,6 +81,7 @@
     border-radius: 999px;
     font-size: 11px;
     background: #eee;
+    margin-left: 6px;
   }
 
   .dateHeader {
@@ -103,147 +108,3 @@
 
   <!-- INPUT -->
   <div class="card">
-    <input id="symptom" placeholder="Symptom (e.g. fatigue)" />
-
-    <select id="severity">
-      ${""}
-    </select>
-
-    <select id="timeBlock">
-      <option value="Morning">Morning 🌅</option>
-      <option value="Afternoon">Afternoon 🌤</option>
-      <option value="Night">Night 🌙</option>
-    </select>
-
-    <button onclick="addEntry()">Add Entry</button>
-  </div>
-
-  <!-- ENTRIES -->
-  <div class="card">
-    <div class="dateHeader">Entries</div>
-    <div id="entries"></div>
-  </div>
-
-  <!-- CHART -->
-  <div class="card">
-    <div class="dateHeader">Severity Trend</div>
-    <canvas id="chart"></canvas>
-  </div>
-
-</div>
-
-<script>
-let data = JSON.parse(localStorage.getItem("journal") || "[]");
-
-let currentDate = new Date();
-
-function save() {
-  localStorage.setItem("journal", JSON.stringify(data));
-}
-
-function formatDate(d) {
-  return d.toISOString().split("T")[0];
-}
-
-function today() {
-  currentDate = new Date();
-  render();
-}
-
-function changeDay(offset) {
-  currentDate.setDate(currentDate.getDate() + offset);
-  render();
-}
-
-function addEntry() {
-  let symptom = document.getElementById("symptom").value;
-  let severity = document.getElementById("severity").value;
-  let timeBlock = document.getElementById("timeBlock").value;
-
-  if (!symptom) return;
-
-  data.push({
-    symptom,
-    severity,
-    timeBlock,
-    date: formatDate(currentDate),
-    time: new Date().toISOString()
-  });
-
-  document.getElementById("symptom").value = "";
-  save();
-  render();
-}
-
-function getDayData() {
-  return data.filter(e => e.date === formatDate(currentDate));
-}
-
-function render() {
-  document.getElementById("currentDate").innerText =
-    "Viewing: " + formatDate(currentDate);
-
-  renderEntries();
-  renderChart();
-}
-
-function renderEntries() {
-  let box = document.getElementById("entries");
-  let dayData = getDayData();
-
-  box.innerHTML = "";
-
-  if (dayData.length === 0) {
-    box.innerHTML = "<div class='meta'>No entries for this day</div>";
-    return;
-  }
-
-  dayData.slice().reverse().forEach(e => {
-    let div = document.createElement("div");
-    div.className = "entry";
-
-    div.innerHTML = `
-      <b>${e.symptom}</b>
-      <span class="pill">${e.timeBlock}</span><br>
-      Severity: ${e.severity}<br>
-      <span class="meta">${new Date(e.time).toLocaleTimeString()}</span>
-    `;
-
-    box.appendChild(div);
-  });
-}
-
-function renderChart() {
-  let ctx = document.getElementById("chart");
-
-  let dayData = getDayData();
-
-  let labels = dayData.map(e => e.timeBlock);
-  let values = dayData.map(e => Number(e.severity));
-
-  if (window.myChart) window.myChart.destroy();
-
-  window.myChart = new Chart(ctx, {
-    type: "line",
-    data: {
-      labels,
-      datasets: [{
-        label: "Severity",
-        data: values,
-        fill: false
-      }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        y: { beginAtZero: true, max: 10 }
-      }
-    }
-  });
-}
-
-render();
-</script>
-
-</body>
-</html>
