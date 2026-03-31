@@ -1,242 +1,186 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>ChemoJournal</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ChemoJournal</title>
 
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f6f3ef;
+    color: #2b2b2b;
+  }
 
-  <style>
-    body {
-      margin: 0;
-      font-family: 'Inter', sans-serif;
-      background: #f8f4ec;
-      color: #2a2a2a;
+  .container {
+    max-width: 900px;
+    margin: auto;
+    padding: 20px;
+  }
+
+  .title {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 20px 0 10px;
+  }
+
+  .card {
+    background: white;
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+
+  input, select, button {
+    width: 100%;
+    padding: 10px;
+    margin-top: 8px;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    font-size: 14px;
+  }
+
+  button {
+    background: #2b2b2b;
+    color: white;
+    border: none;
+    cursor: pointer;
+  }
+
+  button:hover {
+    opacity: 0.9;
+  }
+
+  .entry {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+  }
+
+  .meta {
+    font-size: 13px;
+    color: #666;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  @media (min-width: 800px) {
+    .grid {
+      grid-template-columns: 1fr 1fr;
     }
-
-    header {
-      padding: 18px;
-      font-family: 'Playfair Display', serif;
-      font-size: 22px;
-      background: #fffaf2;
-      border-bottom: 1px solid #e8dfd1;
-      letter-spacing: 0.5px;
-    }
-
-    .calendar {
-      display: flex;
-      gap: 10px;
-      padding: 12px;
-      overflow-x: auto;
-      background: #fffaf2;
-      border-bottom: 1px solid #e8dfd1;
-    }
-
-    .day {
-      min-width: 68px;
-      text-align: center;
-      padding: 10px;
-      border-radius: 12px;
-      background: #ffffff;
-      border: 1px solid #e8dfd1;
-      font-size: 12px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .day.active {
-      background: #c7a77a;
-      color: white;
-      border: none;
-    }
-
-    .container {
-      max-width: 720px;
-      margin: auto;
-      padding: 16px;
-    }
-
-    /* ✨ Paper page feel */
-    .page {
-      background: #fffdf8;
-      border: 1px solid #e8dfd1;
-      border-radius: 16px;
-      padding: 16px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-    }
-
-    .title {
-      font-family: 'Playfair Display', serif;
-      font-size: 18px;
-      margin-bottom: 10px;
-    }
-
-    input, textarea {
-      width: 100%;
-      margin: 6px 0;
-      padding: 10px;
-      border-radius: 10px;
-      border: 1px solid #e5dac8;
-      background: #fff;
-      font-size: 13px;
-    }
-
-    textarea {
-      height: 70px;
-    }
-
-    button {
-      width: 100%;
-      padding: 11px;
-      border-radius: 12px;
-      border: none;
-      background: #b8926b;
-      color: white;
-      font-weight: 500;
-      margin-top: 6px;
-      cursor: pointer;
-    }
-
-    .entry {
-      padding: 12px;
-      border-bottom: 1px dashed #e5dac8;
-    }
-
-    .pill {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: #f0e6d8;
-      font-size: 11px;
-      margin-left: 6px;
-    }
-
-    .meta {
-      font-size: 11px;
-      opacity: 0.65;
-      margin-top: 2px;
-    }
-
-    .section {
-      margin-bottom: 10px;
-    }
-
-  </style>
+  }
+</style>
 </head>
 
 <body>
-
-<header>ChemoJournal</header>
-
-<div class="calendar" id="calendar"></div>
-
 <div class="container">
 
-  <div class="page">
+  <div class="title">🌿 ChemoJournal</div>
 
-    <div class="title" id="selectedDateLabel">Today</div>
+  <!-- INPUT CARD -->
+  <div class="card">
+    <div class="meta">Log today’s symptom</div>
 
-    <div class="section">
-      <input id="symptom" placeholder="Write symptom..." />
-      <input id="severity" type="number" placeholder="Severity (1–10)" />
-      <input id="cycleDay" type="number" placeholder="Cycle Day" />
-      <textarea id="notes" placeholder="Journal notes..."></textarea>
+    <input id="symptom" placeholder="Symptom (e.g. nausea)" />
+    
+    <select id="severity">
+      <option value="1">Severity 1</option>
+      <option value="2">Severity 2</option>
+      <option value="3">Severity 3</option>
+      <option value="4">Severity 4</option>
+      <option value="5">Severity 5</option>
+      <option value="6">Severity 6</option>
+      <option value="7">Severity 7</option>
+      <option value="8">Severity 8</option>
+      <option value="9">Severity 9</option>
+      <option value="10">Severity 10</option>
+    </select>
 
-      <button onclick="addEntry()">Add Entry</button>
-    </div>
-
+    <button onclick="addEntry()">Add Entry</button>
   </div>
 
-  <div style="height:12px"></div>
+  <div class="grid">
 
-  <div class="page">
-    <div class="title">Entries</div>
-    <div id="entries"></div>
+    <!-- ENTRIES -->
+    <div class="card">
+      <div class="title">Entries</div>
+      <div id="entries"></div>
+    </div>
+
+    <!-- INSIGHTS -->
+    <div class="card">
+      <div class="title">Insights</div>
+      <div id="insights" class="meta"></div>
+    </div>
+
   </div>
 
 </div>
 
 <script>
-  let data = JSON.parse(localStorage.getItem("chemoData") || "[]");
-  let selectedDate = new Date().toISOString().split("T")[0];
+let data = JSON.parse(localStorage.getItem("journal") || "[]");
 
-  function last7() {
-    let arr = [];
-    for (let i=6;i>=0;i--) {
-      let d = new Date();
-      d.setDate(d.getDate()-i);
-      arr.push(d.toISOString().split("T")[0]);
-    }
-    return arr;
-  }
+function save() {
+  localStorage.setItem("journal", JSON.stringify(data));
+}
 
-  function renderCalendar() {
-    const c = document.getElementById("calendar");
-    c.innerHTML = "";
+function addEntry() {
+  let symptom = document.getElementById("symptom").value;
+  let severity = document.getElementById("severity").value;
 
-    last7().forEach(date => {
-      let el = document.createElement("div");
-      el.className = "day" + (date === selectedDate ? " active" : "");
-      el.innerHTML = date.slice(5);
-      el.onclick = () => {
-        selectedDate = date;
-        document.getElementById("selectedDateLabel").innerText = date;
-        renderCalendar();
-        render();
-      };
-      c.appendChild(el);
-    });
-  }
+  if (!symptom) return;
 
-  function render() {
-    const container = document.getElementById("entries");
-    container.innerHTML = "";
+  data.push({
+    symptom,
+    severity,
+    time: new Date().toISOString()
+  });
 
-    let filtered = data.filter(e => e.date === selectedDate);
-
-    if (filtered.length === 0) {
-      container.innerHTML = "<div class='meta'>No entries yet for this day</div>";
-      return;
-    }
-
-    filtered.slice().reverse().forEach(e => {
-      container.innerHTML += `
-        <div class="entry">
-          <div><b>${e.symptom}</b><span class="pill">${e.severity}/10</span></div>
-          <div class="meta">Cycle Day ${e.cycleDay}</div>
-          <div>${e.notes}</div>
-        </div>
-      `;
-    });
-  }
-
-  function addEntry() {
-    let entry = {
-      date: selectedDate,
-      symptom: symptom.value,
-      severity: severity.value,
-      cycleDay: cycleDay.value,
-      notes: notes.value,
-      time: new Date().toISOString()
-    };
-
-    if (!entry.symptom) return;
-
-    data.push(entry);
-    localStorage.setItem("chemoData", JSON.stringify(data));
-
-    symptom.value = "";
-    severity.value = "";
-    cycleDay.value = "";
-    notes.value = "";
-
-    render();
-  }
-
-  renderCalendar();
+  document.getElementById("symptom").value = "";
+  save();
   render();
-</script>
+}
 
-</body>
-</html>
+function render() {
+  renderEntries();
+  renderInsights();
+}
+
+function renderEntries() {
+  let box = document.getElementById("entries");
+  box.innerHTML = "";
+
+  if (data.length === 0) {
+    box.innerHTML = "<div class='meta'>No entries yet</div>";
+    return;
+  }
+
+  data.slice().reverse().forEach(e => {
+    let div = document.createElement("div");
+    div.className = "entry";
+
+    div.innerHTML = `
+      <b>${e.symptom}</b><br>
+      Severity: ${e.severity}<br>
+      <span class="meta">${new Date(e.time).toLocaleString()}</span>
+    `;
+
+    box.appendChild(div);
+  });
+}
+
+function renderInsights() {
+  let box = document.getElementById("insights");
+
+  if (data.length === 0) {
+    box.innerHTML = "No data yet.";
+    return;
+  }
+
+  let avg =
