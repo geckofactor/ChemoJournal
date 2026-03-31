@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>ChemoJournal</title>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
   body {
     margin: 0;
@@ -16,13 +18,13 @@
   .container {
     max-width: 900px;
     margin: auto;
-    padding: 18px;
+    padding: 16px;
   }
 
   .title {
     font-size: 22px;
     font-weight: 600;
-    margin: 10px 0 14px;
+    margin: 10px 0;
   }
 
   .card {
@@ -49,16 +51,13 @@
     cursor: pointer;
   }
 
-  .grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 12px;
+  .row {
+    display: flex;
+    gap: 10px;
   }
 
-  @media (min-width: 800px) {
-    .grid {
-      grid-template-columns: 1fr 1fr;
-    }
+  .row button {
+    flex: 1;
   }
 
   .entry {
@@ -78,7 +77,11 @@
     border-radius: 999px;
     font-size: 11px;
     background: #eee;
-    margin-top: 4px;
+  }
+
+  .dateHeader {
+    font-weight: 600;
+    margin-bottom: 8px;
   }
 </style>
 </head>
@@ -88,23 +91,22 @@
 
   <div class="title">🌿 ChemoJournal</div>
 
+  <!-- DATE NAV -->
+  <div class="card">
+    <div class="row">
+      <button onclick="changeDay(-1)">⬅ Prev</button>
+      <button onclick="today()">Today</button>
+      <button onclick="changeDay(1)">Next ➡</button>
+    </div>
+    <div class="meta" id="currentDate"></div>
+  </div>
+
   <!-- INPUT -->
   <div class="card">
-    <div class="meta">Log symptom for today</div>
-
     <input id="symptom" placeholder="Symptom (e.g. fatigue)" />
 
     <select id="severity">
-      <option value="1">Severity 1</option>
-      <option value="2">Severity 2</option>
-      <option value="3">Severity 3</option>
-      <option value="4">Severity 4</option>
-      <option value="5">Severity 5</option>
-      <option value="6">Severity 6</option>
-      <option value="7">Severity 7</option>
-      <option value="8">Severity 8</option>
-      <option value="9">Severity 9</option>
-      <option value="10">Severity 10</option>
+      ${""}
     </select>
 
     <select id="timeBlock">
@@ -116,20 +118,16 @@
     <button onclick="addEntry()">Add Entry</button>
   </div>
 
-  <div class="grid">
+  <!-- ENTRIES -->
+  <div class="card">
+    <div class="dateHeader">Entries</div>
+    <div id="entries"></div>
+  </div>
 
-    <!-- ENTRIES -->
-    <div class="card">
-      <div class="title">Entries</div>
-      <div id="entries"></div>
-    </div>
-
-    <!-- INSIGHTS -->
-    <div class="card">
-      <div class="title">Insights</div>
-      <div id="insights" class="meta"></div>
-    </div>
-
+  <!-- CHART -->
+  <div class="card">
+    <div class="dateHeader">Severity Trend</div>
+    <canvas id="chart"></canvas>
   </div>
 
 </div>
@@ -137,8 +135,24 @@
 <script>
 let data = JSON.parse(localStorage.getItem("journal") || "[]");
 
+let currentDate = new Date();
+
 function save() {
   localStorage.setItem("journal", JSON.stringify(data));
+}
+
+function formatDate(d) {
+  return d.toISOString().split("T")[0];
+}
+
+function today() {
+  currentDate = new Date();
+  render();
+}
+
+function changeDay(offset) {
+  currentDate.setDate(currentDate.getDate() + offset);
+  render();
 }
 
 function addEntry() {
@@ -152,6 +166,7 @@ function addEntry() {
     symptom,
     severity,
     timeBlock,
+    date: formatDate(currentDate),
     time: new Date().toISOString()
   });
 
@@ -160,21 +175,30 @@ function addEntry() {
   render();
 }
 
+function getDayData() {
+  return data.filter(e => e.date === formatDate(currentDate));
+}
+
 function render() {
+  document.getElementById("currentDate").innerText =
+    "Viewing: " + formatDate(currentDate);
+
   renderEntries();
-  renderInsights();
+  renderChart();
 }
 
 function renderEntries() {
   let box = document.getElementById("entries");
+  let dayData = getDayData();
+
   box.innerHTML = "";
 
-  if (data.length === 0) {
-    box.innerHTML = "<div class='meta'>No entries yet</div>";
+  if (dayData.length === 0) {
+    box.innerHTML = "<div class='meta'>No entries for this day</div>";
     return;
   }
 
-  data.slice().reverse().forEach(e => {
+  dayData.slice().reverse().forEach(e => {
     let div = document.createElement("div");
     div.className = "entry";
 
@@ -182,49 +206,40 @@ function renderEntries() {
       <b>${e.symptom}</b>
       <span class="pill">${e.timeBlock}</span><br>
       Severity: ${e.severity}<br>
-      <span class="meta">${new Date(e.time).toLocaleString()}</span>
+      <span class="meta">${new Date(e.time).toLocaleTimeString()}</span>
     `;
 
     box.appendChild(div);
   });
 }
 
-function renderInsights() {
-  let box = document.getElementById("insights");
+function renderChart() {
+  let ctx = document.getElementById("chart");
 
-  if (data.length === 0) {
-    box.innerHTML = "No data yet.";
-    return;
-  }
+  let dayData = getDayData();
 
-  let avg = (
-    data.reduce((s, e) => s + Number(e.severity), 0) / data.length
-  ).toFixed(1);
+  let labels = dayData.map(e => e.timeBlock);
+  let values = dayData.map(e => Number(e.severity));
 
-  let blockCounts = { Morning: 0, Afternoon: 0, Night: 0 };
+  if (window.myChart) window.myChart.destroy();
 
-  data.forEach(e => {
-    blockCounts[e.timeBlock]++;
+  window.myChart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        label: "Severity",
+        data: values,
+        fill: false
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: { beginAtZero: true, max: 10 }
+      }
+    }
   });
-
-  let topBlock = Object.keys(blockCounts).reduce((a, b) =>
-    blockCounts[a] > blockCounts[b] ? a : b
-  );
-
-  let counts = {};
-  data.forEach(e => {
-    counts[e.symptom] = (counts[e.symptom] || 0) + 1;
-  });
-
-  let topSymptom = Object.keys(counts).reduce((a, b) =>
-    counts[a] > counts[b] ? a : b
-  );
-
-  box.innerHTML = `
-    Avg severity: <b>${avg}/10</b><br><br>
-    Most common symptom: <b>${topSymptom}</b><br><br>
-    Most active time: <b>${topBlock}</b>
-  `;
 }
 
 render();
