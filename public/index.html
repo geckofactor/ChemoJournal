@@ -5,112 +5,102 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>ChemoJournal</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Inter:wght@300;400;500&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet"/>
 
 <style>
+/* ===== BASE ===== */
 body {
   margin: 0;
   font-family: Inter, sans-serif;
-  background: linear-gradient(180deg, #f7f2eb, #efe6db);
-  color: #2a2a2a;
+  background: #f3efe7; /* flat paper tone */
+  color: #1f1f1f;
 }
 
-/* soft paper sheet */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.7), transparent 40%),
-              radial-gradient(circle at 70% 80%, rgba(255,255,255,0.4), transparent 50%);
-  pointer-events: none;
-}
-
-/* tiny corner accent */
+/* remove fog entirely */
+body::before,
 body::after {
-  content: "✿";
-  position: fixed;
-  bottom: 16px;
-  right: 16px;
-  font-size: 26px;
-  opacity: 0.12;
+  display: none;
 }
 
+/* ===== LAYOUT ===== */
 .container {
   max-width: 720px;
   margin: auto;
-  padding: 20px;
+  padding: 22px;
 }
 
-/* HEADER */
-.header {
-  margin-bottom: 18px;
-}
-
+/* ===== HEADER ===== */
 .title {
-  font-size: 32px;
-  font-family: Georgia, serif;
-  letter-spacing: 0.5px;
+  font-size: 28px;
+  font-weight: 500;
+  margin-bottom: 4px;
 }
 
 .subtitle {
   font-size: 12px;
-  opacity: 0.6;
+  color: #666;
+  margin-bottom: 16px;
 }
 
-/* CARDS */
+/* ===== CARDS (CLEAN + SOLID) ===== */
 .card {
-  background: rgba(255,255,255,0.93);
-  border: 1px solid #e3d5c6;
-  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid #ded6c8;
+  border-radius: 14px;
   padding: 14px;
-  margin-bottom: 14px;
-  box-shadow: 0 8px 18px rgba(0,0,0,0.05);
+  margin-bottom: 12px;
 }
 
-/* PILLS (planner aesthetic) */
-button {
-  border: none;
-  border-radius: 999px;
-  padding: 10px 12px;
-  margin-top: 8px;
-  width: 100%;
-  background: #2b2b2b;
-  color: white;
-  font-weight: 500;
-  transition: 0.15s ease;
-}
-
-button:hover {
-  transform: translateY(-1px);
-  background: #1f1f1f;
-}
-
+/* ===== INPUTS ===== */
 input, select, textarea {
   width: 100%;
   padding: 10px;
   margin-top: 8px;
-  border-radius: 12px;
-  border: 1px solid #d7c8b6;
-  background: rgba(255,255,255,0.9);
+  border-radius: 10px;
+  border: 1px solid #cfc6b8;
   font-size: 14px;
+  background: #fff;
+  color: #1f1f1f;
+  outline: none;
 }
 
-/* ENTRY STYLE */
+input:focus, select:focus, textarea:focus {
+  border-color: #9c8f7a;
+}
+
+/* ===== BUTTONS ===== */
+button {
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  background: #2b2b2b;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #1f1f1f;
+}
+
+/* ===== ENTRY LIST ===== */
 .entry {
   padding: 10px 0;
-  border-bottom: 1px dashed #e4d6c6;
+  border-bottom: 1px solid #eee;
 }
 
 .tag {
   display: inline-block;
-  padding: 3px 10px;
+  padding: 2px 8px;
   border-radius: 999px;
-  background: #f0e3d5;
+  background: #f0e7db;
   font-size: 11px;
   margin-left: 6px;
 }
 
-/* NAV ROW */
+/* ===== NAV ROW ===== */
 .row {
   display: flex;
   gap: 8px;
@@ -120,10 +110,10 @@ input, select, textarea {
   width: 100%;
 }
 
-/* subtle label style */
+/* ===== LABELS ===== */
 .label {
   font-size: 11px;
-  opacity: 0.55;
+  color: #666;
   margin-top: 6px;
 }
 </style>
@@ -133,10 +123,8 @@ input, select, textarea {
 
 <div class="container">
 
-  <div class="header">
-    <div class="title">ChemoJournal</div>
-    <div class="subtitle">gentle daily tracking • soft health journal</div>
-  </div>
+  <div class="title">ChemoJournal</div>
+  <div class="subtitle">daily health tracking journal</div>
 
   <div class="card">
     <div id="dateLabel"></div>
@@ -150,7 +138,7 @@ input, select, textarea {
 
   <div class="card">
     <div class="label">Symptom</div>
-    <input id="symptom" placeholder="How are you feeling today?" />
+    <input id="symptom" placeholder="How are you feeling?" />
 
     <div class="label">Severity</div>
     <select id="severity"></select>
@@ -165,7 +153,7 @@ input, select, textarea {
     </select>
 
     <div class="label">Medication</div>
-    <input id="med" placeholder="Optional medication" />
+    <input id="med" placeholder="Optional" />
 
     <div class="label">Notes</div>
     <textarea id="notes" rows="3"></textarea>
@@ -219,7 +207,7 @@ function render(){
   let day = getDay();
 
   if(!day.length){
-    list.innerHTML = "<div style='opacity:0.6;font-size:13px;'>No entries yet.</div>";
+    list.innerHTML = "<div style='color:#777;font-size:13px;'>No entries yet.</div>";
     return;
   }
 
@@ -231,8 +219,8 @@ function render(){
       <b>${e.symptom || "Entry"}</b>
       <span class="tag">${e.severity}/10</span>
       <span class="tag">${e.mood}</span>
-      <div style="font-size:12px;opacity:0.7;margin-top:4px">${e.med || ""}</div>
-      <div style="font-size:12px;opacity:0.7">${e.notes || ""}</div>
+      <div style="font-size:12px;color:#666;margin-top:4px">${e.med || ""}</div>
+      <div style="font-size:12px;color:#666">${e.notes || ""}</div>
     `;
 
     list.appendChild(div);
