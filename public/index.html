@@ -45,193 +45,32 @@ h2 {
   backdrop-filter: blur(2px);
 }
 
-/* 🔘 UPDATED BUTTONS */
+/* 🔥 FULL BUTTON REDESIGN (CLEARLY DIFFERENT NOW) */
 button {
-  padding: 11px;
-  margin-top: 8px;
-  width: 100%;
-  border-radius: 14px;
-
-  border: 1px solid rgba(0,0,0,0.12);
-  background: linear-gradient(180deg, #4a4a4a, #2f2f2f);
-
-  color: white;
-  font-size: 14px;
-  letter-spacing: 0.3px;
-
-  box-shadow: 0 3px 10px rgba(0,0,0,0.12);
-  transition: transform 0.08s ease, box-shadow 0.08s ease;
-}
-
-/* press effect */
-button:active {
-  transform: translateY(1px);
-  box-shadow: 0 1px 6px rgba(0,0,0,0.15);
-}
-
-/* secondary button (Today) */
-button.secondary {
-  background: linear-gradient(180deg, #8a8a8a, #6f6f6f);
-}
-
-/* inputs */
-input, select {
-  width: 100%;
-  padding: 10px;
-  margin-top: 6px;
-  border-radius: 12px;
-  border: 1px solid rgba(0,0,0,0.15);
-  background: #fffaf0;
-  font-size: 14px;
-}
-
-/* entries */
-.entry {
   padding: 12px;
-  margin: 10px 0;
-  border-radius: 12px;
+  margin-top: 10px;
+  width: 100%;
+  border-radius: 16px;
 
-  background: #fff7e6;
-  border-left: 5px solid #d6b77a;
+  border: 2px solid #d4b483;
 
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  background: linear-gradient(135deg, #fff3d6, #e6c98f);
+
+  color: #3b2f1c;
+  font-size: 15px;
+  font-weight: bold;
+  letter-spacing: 0.4px;
+
+  box-shadow: 0 6px 14px rgba(0,0,0,0.12);
+
+  transition: all 0.15s ease;
 }
 
-.meta {
-  font-size: 12px;
-  color: #666;
-  margin-top: 4px;
+button:active {
+  transform: scale(0.98);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
-.pill {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: #e8dcc7;
-  font-size: 11px;
-  margin-left: 6px;
-}
-</style>
-</head>
-
-<body>
-
-<h2>ChemoJournal</h2>
-
-<div class="card">
-  <div id="dateLabel"></div>
-
-  <button onclick="prev()">Previous Day</button>
-  <button onclick="next()">Next Day</button>
-  <button class="secondary" onclick="today()">Today</button>
-</div>
-
-<div class="card">
-  <input id="symptom" placeholder="Enter symptom">
-
-  <select id="severity">
-    <option value="1">1</option><option value="2">2</option>
-    <option value="3">3</option><option value="4">4</option>
-    <option value="5">5</option><option value="6">6</option>
-    <option value="7">7</option><option value="8">8</option>
-    <option value="9">9</option><option value="10">10</option>
-  </select>
-
-  <button onclick="add()">Add Entry</button>
-</div>
-
-<div class="card">
-  <div id="list"></div>
-</div>
-
-<script>
-let data = [];
-let date = new Date();
-
-/* LOAD */
-try {
-  const saved = localStorage.getItem("cj");
-  if (saved) data = JSON.parse(saved);
-  if (!Array.isArray(data)) data = [];
-} catch (e) {
-  data = [];
-}
-
-function fmt(d){
-  return d.getFullYear() + "-" + (d.getMonth()+1) + "-" + d.getDate();
-}
-
-function save(){
-  localStorage.setItem("cj", JSON.stringify(data));
-}
-
-/* NAV */
-function next(){
-  date.setDate(date.getDate() + 1);
-  render();
-}
-
-function prev(){
-  date.setDate(date.getDate() - 1);
-  render();
-}
-
-function today(){
-  date = new Date();
-  render();
-}
-
-/* ADD */
-function add(){
-  const symptom = document.getElementById("symptom").value.trim();
-  const severity = document.getElementById("severity").value;
-
-  if(!symptom) return;
-
-  data.push({
-    symptom,
-    severity,
-    date: fmt(date),
-    time: Date.now()
-  });
-
-  document.getElementById("symptom").value = "";
-  save();
-  render();
-}
-
-/* RENDER */
-function render(){
-  document.getElementById("dateLabel").innerText =
-    date.toDateString();
-
-  const box = document.getElementById("list");
-  box.innerHTML = "";
-
-  const today = fmt(date);
-  const filtered = data.filter(x => x.date === today);
-
-  if(filtered.length === 0){
-    box.innerHTML = "<div class='meta'>No entries for this day</div>";
-    return;
-  }
-
-  filtered.slice().reverse().forEach(e => {
-    const div = document.createElement("div");
-    div.className = "entry";
-
-    div.innerHTML = `
-      <b>${e.symptom}</b>
-      <span class="pill">Severity ${e.severity}</span>
-      <div class="meta">${new Date(e.time).toLocaleString()}</div>
-    `;
-
-    box.appendChild(div);
-  });
-}
-
-render();
-</script>
-
-</body>
-</html>
+/* secondary button */
+button.secondary {
+  background: linear-gradient(135deg, #d9d9d9, #a8a8a8);
