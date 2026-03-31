@@ -15,7 +15,7 @@ body {
   color: #2a2a2a;
 }
 
-/* Japanese stationery paper */
+/* paper texture */
 body::before {
   content: "";
   position: fixed;
@@ -25,7 +25,18 @@ body::before {
     linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px);
   background-size: 18px 18px;
-  opacity: 0.6;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* decorative stamp */
+body::after {
+  content: "✿";
+  position: fixed;
+  bottom: 16px;
+  right: 18px;
+  font-size: 28px;
+  opacity: 0.15;
   pointer-events: none;
 }
 
@@ -36,44 +47,69 @@ body::before {
 }
 
 h1 {
-  font-family: "Yuji Syuku", serif;
-  font-size: 32px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 34px;
+  letter-spacing: 1px;
   margin: 10px 0 20px;
+  font-weight: 500;
+  position: relative;
+}
+
+h1::after {
+  content: "";
+  display: block;
+  width: 120px;
+  height: 2px;
+  background: linear-gradient(to right, #c8b7a6, transparent);
+  margin-top: 6px;
 }
 
 .card {
-  background: rgba(255,255,255,0.92);
+  background: rgba(255,255,255,0.94);
   border: 1px solid #e5dbcf;
   border-radius: 18px;
   padding: 14px;
   margin-bottom: 14px;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.05);
+  box-shadow:
+    0 8px 20px rgba(0,0,0,0.06),
+    inset 0 1px 0 rgba(255,255,255,0.8);
   backdrop-filter: blur(6px);
 }
 
 .row {
   display: flex;
-  gap: 8px;
+  gap: 10px;
 }
 
 button, input, select, textarea {
   width: 100%;
-  padding: 10px;
+  padding: 11px;
   margin-top: 8px;
-  border-radius: 12px;
+  border-radius: 14px;
   border: 1px solid #d7cbbb;
   font-size: 14px;
   box-sizing: border-box;
+  background: rgba(255,255,255,0.9);
+  transition: all 0.15s ease;
 }
 
 button {
-  background: #2f2f2f;
+  background: linear-gradient(145deg, #3a3a3a, #222);
   color: white;
   border: none;
-  cursor: pointer;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
 }
 
-button:active { transform: scale(0.98); }
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.18);
+}
+
+button:active {
+  transform: scale(0.98);
+}
 
 .small {
   font-size: 12px;
@@ -82,7 +118,7 @@ button:active { transform: scale(0.98); }
 
 .tag {
   display: inline-block;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 999px;
   background: #eee2d6;
   font-size: 11px;
@@ -100,143 +136,4 @@ button:active { transform: scale(0.98); }
 
 <div class="container">
 
-<h1>ChemoJournal</h1>
-
-<div class="card">
-  <div id="dateLabel"></div>
-
-  <div class="row">
-    <button onclick="shift(-1)">‹</button>
-    <button onclick="today()">Today</button>
-    <button onclick="shift(1)">›</button>
-  </div>
-</div>
-
-<div class="card">
-  <div class="small">Symptom</div>
-  <input id="symptom" placeholder="Enter symptom..." />
-
-  <div class="small">Severity</div>
-  <select id="severity"></select>
-
-  <div class="small">Mood</div>
-  <select id="mood">
-    <option>Neutral</option>
-    <option>Good</option>
-    <option>Bad</option>
-    <option>Anxious</option>
-    <option>Tired</option>
-  </select>
-
-  <div class="small">Medication</div>
-  <input id="med" placeholder="Medication (optional)" />
-
-  <div class="small">Notes</div>
-  <textarea id="notes" rows="3"></textarea>
-
-  <button onclick="add()">Add Entry</button>
-</div>
-
-<div class="card">
-  <div id="list"></div>
-</div>
-
-</div>
-
-<script>
-let db = JSON.parse(localStorage.getItem("CHEMOJOURNAL_DB") || "{}");
-let date = new Date();
-
-function key(d){
-  return d.toISOString().split("T")[0];
-}
-
-function save(){
-  localStorage.setItem("CHEMOJOURNAL_DB", JSON.stringify(db));
-}
-
-function initSeverity(){
-  let s = document.getElementById("severity");
-  for(let i=1;i<=10;i++){
-    let o = document.createElement("option");
-    o.value = i;
-    o.textContent = i;
-    s.appendChild(o);
-  }
-}
-
-function getDay(){
-  let k = key(date);
-  if(!db[k]) db[k] = [];
-  return db[k];
-}
-
-function render(){
-  document.getElementById("dateLabel").innerText =
-    date.toDateString();
-
-  let list = document.getElementById("list");
-  list.innerHTML = "";
-
-  let day = getDay();
-
-  if(day.length === 0){
-    list.innerHTML = "<div class='small'>No entries for this day.</div>";
-    return;
-  }
-
-  day.slice().reverse().forEach(e=>{
-    let div = document.createElement("div");
-    div.className = "entry";
-
-    div.innerHTML = `
-      <div><b>${e.symptom || "Entry"}</b>
-      <span class="tag">${e.severity}/10</span>
-      <span class="tag">${e.mood}</span></div>
-      <div class="small">${e.med || ""}</div>
-      <div class="small">${e.notes || ""}</div>
-      <div class="small">${new Date(e.time).toLocaleString()}</div>
-    `;
-
-    list.appendChild(div);
-  });
-}
-
-function add(){
-  let obj = {
-    symptom: symptom.value,
-    severity: severity.value,
-    mood: mood.value,
-    med: med.value,
-    notes: notes.value,
-    time: Date.now()
-  };
-
-  if(!obj.symptom && !obj.notes) return;
-
-  getDay().push(obj);
-  save();
-
-  symptom.value = "";
-  med.value = "";
-  notes.value = "";
-
-  render();
-}
-
-function shift(n){
-  date.setDate(date.getDate() + n);
-  render();
-}
-
-function today(){
-  date = new Date();
-  render();
-}
-
-initSeverity();
-render();
-</script>
-
-</body>
-</html>
+<h1>ChemoJournal</h
