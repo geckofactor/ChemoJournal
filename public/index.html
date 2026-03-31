@@ -7,29 +7,61 @@
 
 <style>
 body {
-  font-family: Arial, sans-serif;
+  font-family: Georgia, serif;
   margin: 0;
   padding: 16px;
   background: #f4f1ea;
+  color: #2a2a2a;
+}
+
+h2 {
+  margin-top: 0;
 }
 
 .card {
-  background: white;
-  padding: 12px;
+  background: #fffdf9;
+  padding: 14px;
   margin-bottom: 12px;
-  border-radius: 10px;
+  border-radius: 12px;
+  border: 1px solid #e6dfd4;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
 button {
   padding: 10px;
-  margin: 4px 0;
+  margin-top: 6px;
   width: 100%;
+  border-radius: 10px;
+  border: none;
+  background: #2f2f2f;
+  color: white;
 }
 
 input, select {
   width: 100%;
-  padding: 8px;
+  padding: 10px;
   margin-top: 6px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+}
+
+.entry {
+  padding: 10px;
+  border-bottom: 1px dashed #ddd;
+}
+
+.meta {
+  font-size: 12px;
+  color: #666;
+}
+
+.pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eee6da;
+  font-size: 11px;
+  margin-left: 6px;
 }
 </style>
 </head>
@@ -40,87 +72,12 @@ input, select {
 
 <div class="card">
   <div id="dateLabel"></div>
-  <button onclick="prev()">Prev</button>
-  <button onclick="next()">Next</button>
+  <button onclick="prev()">Previous Day</button>
+  <button onclick="next()">Next Day</button>
 </div>
 
 <div class="card">
-  <input id="symptom" placeholder="symptom">
+  <input id="symptom" placeholder="Enter symptom">
+
   <select id="severity">
-    <option>1</option><option>2</option><option>3</option>
-    <option>4</option><option>5</option><option>6</option>
-    <option>7</option><option>8</option><option>9</option><option>10</option>
-  </select>
-
-  <button onclick="add()">Add</button>
-</div>
-
-<div class="card">
-  <div id="list"></div>
-</div>
-
-<script>
-let data = [];
-let date = new Date();
-
-/* SAFE LOAD */
-try {
-  const saved = localStorage.getItem("cj");
-  if (saved) data = JSON.parse(saved);
-  if (!Array.isArray(data)) data = [];
-} catch (e) {
-  data = [];
-}
-
-/* FORMAT */
-function fmt(d){
-  return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();
-}
-
-/* SAVE */
-function save(){
-  localStorage.setItem("cj", JSON.stringify(data));
-}
-
-/* NAV */
-function next(){
-  date.setDate(date.getDate()+1);
-  render();
-}
-
-function prev(){
-  date.setDate(date.getDate()-1);
-  render();
-}
-
-/* ADD */
-function add(){
-  const s = document.getElementById("symptom").value;
-  const sev = document.getElementById("severity").value;
-
-  if(!s) return;
-
-  data.push({
-    symptom:s,
-    severity:sev,
-    date:fmt(date),
-    time:Date.now()
-  });
-
-  document.getElementById("symptom").value="";
-  save();
-  render();
-}
-
-/* RENDER */
-function render(){
-  document.getElementById("dateLabel").innerText =
-    date.toDateString();
-
-  const box = document.getElementById("list");
-  box.innerHTML="";
-
-  const today = fmt(date);
-  const filtered = data.filter(x=>x.date===today);
-
-  if(filtered.length===0){
+    <option value="
