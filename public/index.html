@@ -11,49 +11,120 @@
 body {
   margin: 0;
   font-family: Inter, sans-serif;
-  background: linear-gradient(180deg, #f6f1ea, #efe7dc);
+  background: linear-gradient(180deg, #f7f2eb, #efe6db);
   color: #2a2a2a;
 }
 
-.container { max-width: 760px; margin: auto; padding: 18px; }
+/* soft paper sheet */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.7), transparent 40%),
+              radial-gradient(circle at 70% 80%, rgba(255,255,255,0.4), transparent 50%);
+  pointer-events: none;
+}
 
-h1 { font-size: 30px; margin: 10px 0; }
+/* tiny corner accent */
+body::after {
+  content: "✿";
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  font-size: 26px;
+  opacity: 0.12;
+}
 
+.container {
+  max-width: 720px;
+  margin: auto;
+  padding: 20px;
+}
+
+/* HEADER */
+.header {
+  margin-bottom: 18px;
+}
+
+.title {
+  font-size: 32px;
+  font-family: Georgia, serif;
+  letter-spacing: 0.5px;
+}
+
+.subtitle {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+/* CARDS */
 .card {
-  background: rgba(255,255,255,0.92);
-  border-radius: 16px;
+  background: rgba(255,255,255,0.93);
+  border: 1px solid #e3d5c6;
+  border-radius: 18px;
   padding: 14px;
-  margin-bottom: 12px;
-  border: 1px solid #e0d2c2;
+  margin-bottom: 14px;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.05);
 }
 
-input, select, textarea, button {
-  width: 100%;
-  margin-top: 8px;
-  padding: 10px;
-  border-radius: 12px;
-  border: 1px solid #d6c8b8;
-  box-sizing: border-box;
-}
-
+/* PILLS (planner aesthetic) */
 button {
-  background: #222;
-  color: white;
   border: none;
+  border-radius: 999px;
+  padding: 10px 12px;
+  margin-top: 8px;
+  width: 100%;
+  background: #2b2b2b;
+  color: white;
+  font-weight: 500;
+  transition: 0.15s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  background: #1f1f1f;
+}
+
+input, select, textarea {
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  border-radius: 12px;
+  border: 1px solid #d7c8b6;
+  background: rgba(255,255,255,0.9);
+  font-size: 14px;
+}
+
+/* ENTRY STYLE */
+.entry {
+  padding: 10px 0;
+  border-bottom: 1px dashed #e4d6c6;
 }
 
 .tag {
-  display:inline-block;
-  padding:2px 8px;
-  border-radius:999px;
-  background:#eee2d6;
-  font-size:11px;
-  margin-left:5px;
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #f0e3d5;
+  font-size: 11px;
+  margin-left: 6px;
 }
 
-.entry {
-  padding:10px 0;
-  border-bottom:1px dashed #ddd;
+/* NAV ROW */
+.row {
+  display: flex;
+  gap: 8px;
+}
+
+.row button {
+  width: 100%;
+}
+
+/* subtle label style */
+.label {
+  font-size: 11px;
+  opacity: 0.55;
+  margin-top: 6px;
 }
 </style>
 </head>
@@ -62,73 +133,66 @@ button {
 
 <div class="container">
 
-<h1>ChemoJournal</h1>
+  <div class="header">
+    <div class="title">ChemoJournal</div>
+    <div class="subtitle">gentle daily tracking • soft health journal</div>
+  </div>
 
-<div class="card">
-  <div id="dateLabel">Loading...</div>
+  <div class="card">
+    <div id="dateLabel"></div>
 
-  <button onclick="shift(-1)">Back</button>
-  <button onclick="today()">Today</button>
-  <button onclick="shift(1)">Forward</button>
-</div>
+    <div class="row">
+      <button onclick="shift(-1)">‹</button>
+      <button onclick="today()">Today</button>
+      <button onclick="shift(1)">›</button>
+    </div>
+  </div>
 
-<div class="card">
-  <input id="symptom" placeholder="Symptom"/>
-  <select id="severity"></select>
+  <div class="card">
+    <div class="label">Symptom</div>
+    <input id="symptom" placeholder="How are you feeling today?" />
 
-  <select id="mood">
-    <option>Neutral</option>
-    <option>Good</option>
-    <option>Bad</option>
-    <option>Anxious</option>
-    <option>Tired</option>
-  </select>
+    <div class="label">Severity</div>
+    <select id="severity"></select>
 
-  <input id="med" placeholder="Medication"/>
-  <textarea id="notes" placeholder="Notes"></textarea>
+    <div class="label">Mood</div>
+    <select id="mood">
+      <option>Neutral</option>
+      <option>Good</option>
+      <option>Bad</option>
+      <option>Anxious</option>
+      <option>Tired</option>
+    </select>
 
-  <button onclick="add()">Add Entry</button>
-</div>
+    <div class="label">Medication</div>
+    <input id="med" placeholder="Optional medication" />
 
-<div class="card">
-  <div id="list"></div>
-</div>
+    <div class="label">Notes</div>
+    <textarea id="notes" rows="3"></textarea>
+
+    <button onclick="add()">Add Entry</button>
+  </div>
+
+  <div class="card">
+    <div id="list"></div>
+  </div>
 
 </div>
 
 <script>
-/* =========================
-   SAFE WRAPPER (NO BLANK SCREEN EVER)
-========================= */
-
-let db = {};
+let db = JSON.parse(localStorage.getItem("CHEMOJOURNAL_DB") || "{}");
 let date = new Date();
 
-/* DOM SAFE ACCESS */
-function el(id){
-  return document.getElementById(id);
-}
+const symptom = document.getElementById("symptom");
+const severity = document.getElementById("severity");
+const mood = document.getElementById("mood");
+const med = document.getElementById("med");
+const notes = document.getElementById("notes");
 
-/* STORAGE SAFE */
-function loadDB(){
-  try {
-    return JSON.parse(localStorage.getItem("CHEMOJOURNAL_DB") || "{}");
-  } catch (e) {
-    console.error("DB load error", e);
-    return {};
-  }
-}
+function key(d){ return d.toISOString().split("T")[0]; }
 
-function saveDB(){
-  try {
-    localStorage.setItem("CHEMOJOURNAL_DB", JSON.stringify(db));
-  } catch (e) {
-    console.error("DB save error", e);
-  }
-}
-
-function key(d){
-  return d.toISOString().split("T")[0];
+function save(){
+  localStorage.setItem("CHEMOJOURNAL_DB", JSON.stringify(db));
 }
 
 function getDay(){
@@ -137,78 +201,64 @@ function getDay(){
   return db[k];
 }
 
-/* INIT */
 function initSeverity(){
-  let s = el("severity");
   for(let i=1;i<=10;i++){
     let o=document.createElement("option");
     o.value=i;
     o.textContent=i;
-    s.appendChild(o);
+    severity.appendChild(o);
   }
 }
 
-/* RENDER (GUARANTEED SAFE) */
 function render(){
-  try {
-    el("dateLabel").innerText = date.toDateString();
+  document.getElementById("dateLabel").innerText = date.toDateString();
 
-    let list = el("list");
-    let day = getDay();
+  let list = document.getElementById("list");
+  list.innerHTML = "";
 
-    list.innerHTML = "";
+  let day = getDay();
 
-    if(!day || day.length === 0){
-      list.innerHTML = "<div>No entries</div>";
-      return;
-    }
-
-    day.slice().reverse().forEach(e=>{
-      let div = document.createElement("div");
-      div.className = "entry";
-
-      div.innerHTML = `
-        <b>${e.symptom || "Entry"}</b>
-        <span class="tag">${e.severity}/10</span>
-        <span class="tag">${e.mood}</span>
-        <div style="font-size:12px;opacity:0.7">${e.med || ""}</div>
-        <div style="font-size:12px;opacity:0.7">${e.notes || ""}</div>
-      `;
-
-      list.appendChild(div);
-    });
-
-  } catch (err) {
-    console.error("Render error:", err);
-    document.body.innerHTML += "<pre>Render error: " + err.message + "</pre>";
+  if(!day.length){
+    list.innerHTML = "<div style='opacity:0.6;font-size:13px;'>No entries yet.</div>";
+    return;
   }
+
+  day.slice().reverse().forEach(e=>{
+    let div = document.createElement("div");
+    div.className = "entry";
+
+    div.innerHTML = `
+      <b>${e.symptom || "Entry"}</b>
+      <span class="tag">${e.severity}/10</span>
+      <span class="tag">${e.mood}</span>
+      <div style="font-size:12px;opacity:0.7;margin-top:4px">${e.med || ""}</div>
+      <div style="font-size:12px;opacity:0.7">${e.notes || ""}</div>
+    `;
+
+    list.appendChild(div);
+  });
 }
 
-/* ACTIONS */
 function add(){
-  try {
-    let obj = {
-      symptom: el("symptom").value,
-      severity: el("severity").value,
-      mood: el("mood").value,
-      med: el("med").value,
-      notes: el("notes").value,
-      time: Date.now()
-    };
+  let obj = {
+    symptom: symptom.value,
+    severity: severity.value,
+    mood: mood.value,
+    med: med.value,
+    notes: notes.value,
+    time: Date.now()
+  };
 
-    if(!obj.symptom && !obj.notes) return;
+  if(!obj.symptom && !obj.notes) return;
 
-    getDay().push(obj);
-    saveDB();
+  getDay().push(obj);
+  save();
 
-    el("symptom").value = "";
-    el("med").value = "";
-    el("notes").value = "";
+  symptom.value = "";
+  med.value = "";
+  notes.value = "";
 
-    render();
-  } catch (e) {
-    console.error("Add error", e);
-  }
+  render();
 }
 
 function shift(n){
@@ -221,12 +271,8 @@ function today(){
   render();
 }
 
-/* BOOT */
-(function start(){
-  db = loadDB();
-  initSeverity();
-  render();
-})();
+initSeverity();
+render();
 </script>
 
 </body>
