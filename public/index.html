@@ -1,194 +1,193 @@
-<!DOCTYPE html>
-<html>
+<!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>FOLFOX Tracker</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ChemoJournal Tracker</title>
   <style>
-    body { margin: 0; background: #080f18; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #0f172a;
+      color: #e2e8f0;
+    }header {
+  padding: 16px;
+  background: #1e293b;
+  text-align: center;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.container {
+  max-width: 800px;
+  margin: 20px auto;
+  padding: 16px;
+}
+
+.card {
+  background: #1e293b;
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+label {
+  display: block;
+  margin-top: 10px;
+  font-size: 14px;
+  color: #cbd5e1;
+}
+
+input, textarea, select {
+  width: 100%;
+  padding: 8px;
+  margin-top: 5px;
+  border-radius: 8px;
+  border: none;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+button {
+  margin-top: 12px;
+  padding: 10px;
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  background: #3b82f6;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #2563eb;
+}
+
+.entry {
+  background: #0f172a;
+  padding: 10px;
+  margin-top: 10px;
+  border-radius: 8px;
+  border: 1px solid #334155;
+}
+
+.small {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+}
+
+.row > div {
+  flex: 1;
+}
+
   </style>
 </head>
+<body><header>ChemoJournal Daily Tracker</header><div class="container">  <div class="card">
+    <h3>Log Today</h3><div class="row">
+  <div>
+    <label>Energy (1-10)</label>
+    <input id="energy" type="number" min="1" max="10"/>
+  </div>
+  <div>
+    <label>Nausea (0-10)</label>
+    <input id="nausea" type="number" min="0" max="10"/>
+  </div>
+</div>
 
-<body>
-<div id="root"></div>
+<div class="row">
+  <div>
+    <label>Appetite (0-10)</label>
+    <input id="appetite" type="number" min="0" max="10"/>
+  </div>
+  <div>
+    <label>Signatera (ctDNA)</label>
+    <input id="signatera" type="number" step="0.01" placeholder="e.g. 0.09"/>
+  </div>
+</div>
 
-<script type="text/babel">
+<label>Fever today?</label>
+<select id="fever" onchange="toggleTemp()">
+  <option value="no">No</option>
+  <option value="yes">Yes</option>
+</select>
 
-const { useState, useEffect, useCallback } = React;
+<div id="tempBox" style="display:none;">
+  <label>Temperature (°F)</label>
+  <input id="temp" type="number" step="0.1" placeholder="e.g. 100.4"/>
+</div>
 
-const STORAGE_KEY = "folfox-v3-entries";
-const CYCLE_KEY = "folfox-v3-cycle";
+<label>Notes</label>
+<textarea id="notes"></textarea>
 
-const NEUROPATHY_SITES = [
-  { id: "hands", label: "Hands", icon: "✋" },
-  { id: "feet", label: "Feet", icon: "🦶" },
-  { id: "throat_cold", label: "Cold Throat", icon: "🌡" },
-  { id: "balance", label: "Balance", icon: "⚖" },
-  { id: "dexterity", label: "Dexterity", icon: "🤏" },
-];
+<button onclick="saveEntry()">Save Entry</button>
 
-const OTHER_SYMPTOMS = [
-  { id: "nausea", label: "Nausea", icon: "🤢" },
-  { id: "fatigue", label: "Fatigue", icon: "😴" },
-  { id: "mucositis", label: "Mucositis", icon: "👄" },
-  { id: "diarrhea", label: "Diarrhea", icon: "🚽" },
-  { id: "appetite", label: "Appetite Loss", icon: "🍽" },
-  { id: "cognitive", label: "Brain Fog", icon: "🧠" },
-];
+  </div>  <div class="card">
+    <h3>Past Entries</h3>
+    <div id="entries"></div>
+    <button onclick="clearData()">Clear All Data</button>
+  </div></div><script>
+  function getData() {
+    return JSON.parse(localStorage.getItem("chemoEntries") || "[]");
+  }
 
-const ALL_SYMPTOMS = [...NEUROPATHY_SITES, ...OTHER_SYMPTOMS];
-const SEVERITY_LABELS = ["None","Mild","Moderate","Severe","Unbearable"];
-const SEVERITY_COLORS = ["#2d4a3e","#4a7c59","#c9a84c","#d46b3a","#b03a2e"];
-const RED_FLAG = 3;
+  function toggleTemp() {
+    const fever = document.getElementById("fever").value;
+    document.getElementById("tempBox").style.display = fever === "yes" ? "block" : "none";
+  }
 
-// --- minimal insights (kept simple to avoid breakage)
-function computeInsights(entries) {
-  const insights = [];
-  const flags = [];
-
-  if (!entries.length) return { insights, flags };
-
-  const latest = entries[entries.length - 1];
-
-  ALL_SYMPTOMS.forEach(s => {
-    const val = latest.symptoms?.[s.id] ?? 0;
-    if (val >= RED_FLAG) {
-      flags.push({
-        label: `${s.icon} ${s.label}: ${SEVERITY_LABELS[val]}`,
-        detail: val === 4 ? "Contact oncology now." : "Call if not improving."
-      });
-    }
-  });
-
-  return { insights, flags };
-}
-
-function SeveritySlider({ value, onChange, label }) {
-  return (
-    <div style={{ marginBottom: 10 }}>
-      <div style={{ display:"flex", justifyContent:"space-between" }}>
-        <span style={{ fontSize:12, color:"#8a9bb0" }}>{label}</span>
-        <span style={{ fontSize:11, color:SEVERITY_COLORS[value] }}>
-          {SEVERITY_LABELS[value]}
-        </span>
-      </div>
-      <input
-        type="range"
-        min={0}
-        max={4}
-        value={value}
-        onChange={e => onChange(Number(e.target.value))}
-        style={{ width:"100%" }}
-      />
-    </div>
-  );
-}
-
-function FOLFOXTracker() {
-  const [entries,setEntries]=useState([]);
-  const [currentCycle,setCurrentCycle]=useState(1);
-  const [cycleDay,setCycleDay]=useState(1);
-  const [symptoms,setSymptoms]=useState({});
-  const [notes,setNotes]=useState("");
-
-  useEffect(()=>{
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if(saved) setEntries(JSON.parse(saved));
-
-    const cycle = localStorage.getItem(CYCLE_KEY);
-    if(cycle){
-      const c = JSON.parse(cycle);
-      setCurrentCycle(c.cycle || 1);
-      setCycleDay(c.day || 1);
-    }
-  },[]);
-
-  const setSym = (id,val)=>setSymptoms(s=>({...s,[id]:val}));
-
-  const saveEntry = ()=>{
+  function saveEntry() {
     const entry = {
-      id: Date.now(),
-      date: new Date().toISOString(),
-      cycle: currentCycle,
-      cycleDay,
-      symptoms,
-      notes
+      date: new Date().toLocaleString(),
+      energy: document.getElementById("energy").value,
+      nausea: document.getElementById("nausea").value,
+      appetite: document.getElementById("appetite").value,
+      signatera: document.getElementById("signatera").value,
+      fever: document.getElementById("fever").value,
+      temp: document.getElementById("temp").value,
+      notes: document.getElementById("notes").value
     };
 
-    const updated=[...entries,entry];
-    setEntries(updated);
+    const data = getData();
+    data.unshift(entry);
+    localStorage.setItem("chemoEntries", JSON.stringify(data));
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    localStorage.setItem(CYCLE_KEY, JSON.stringify({cycle:currentCycle,day:cycleDay}));
+    document.getElementById("energy").value = "";
+    document.getElementById("nausea").value = "";
+    document.getElementById("appetite").value = "";
+    document.getElementById("signatera").value = "";
+    document.getElementById("fever").value = "no";
+    document.getElementById("temp").value = "";
+    document.getElementById("notes").value = "";
+    toggleTemp();
 
-    setSymptoms({});
-    setNotes("");
-  };
+    render();
+  }
 
-  const {flags} = computeInsights(entries);
+  function render() {
+    const entries = getData();
+    const container = document.getElementById("entries");
 
-  return (
-    <div style={{ padding:20, color:"#c8d8e8", fontFamily:"sans-serif" }}>
+    container.innerHTML = entries.map(e => `
+      <div class="entry">
+        <div class="small">${e.date}</div>
+        <div>Energy: ${e.energy}/10 | Nausea: ${e.nausea}/10 | Appetite: ${e.appetite}/10</div>
+        <div>Signatera: ${e.signatera || "N/A"}</div>
+        <div>Fever: ${e.fever}${e.temp ? " (" + e.temp + "°F)" : ""}</div>
+        <div>Notes: ${e.notes}</div>
+      </div>
+    `).join("");
+  }
 
-      <h2>FOLFOX Tracker</h2>
-      <div>Cycle {currentCycle} · Day {cycleDay}</div>
+  function clearData() {
+    localStorage.removeItem("chemoEntries");
+    render();
+  }
 
-      {flags.length>0 && (
-        <div style={{background:"#2a0a0a",padding:10,marginTop:10}}>
-          {flags.map((f,i)=><div key={i}>{f.label}</div>)}
-        </div>
-      )}
-
-      <h3>Neuropathy</h3>
-      {NEUROPATHY_SITES.map(s=>(
-        <SeveritySlider
-          key={s.id}
-          label={s.label}
-          value={symptoms[s.id]||0}
-          onChange={v=>setSym(s.id,v)}
-        />
-      ))}
-
-      <h3>Other</h3>
-      {OTHER_SYMPTOMS.map(s=>(
-        <SeveritySlider
-          key={s.id}
-          label={s.label}
-          value={symptoms[s.id]||0}
-          onChange={v=>setSym(s.id,v)}
-        />
-      ))}
-
-      <textarea
-        placeholder="Notes..."
-        value={notes}
-        onChange={e=>setNotes(e.target.value)}
-        style={{width:"100%",marginTop:10}}
-      />
-
-      <button onClick={saveEntry} style={{marginTop:10}}>
-        Save Entry
-      </button>
-
-      <h3>History</h3>
-      {entries.map(e=>(
-        <div key={e.id} style={{marginBottom:10}}>
-          Day {e.cycleDay} — {new Date(e.date).toLocaleDateString()}
-        </div>
-      ))}
-
-    </div>
-  );
-}
-
-ReactDOM.createRoot(document.getElementById("root"))
-  .render(<FOLFOXTracker />);
-
-</script>
-</body>
+  render();
+</script></body>
 </html>
