@@ -80,4 +80,90 @@ function FOLFOXTracker() {
       temp
     };
 
-    const
+    const updated = [...entries, entry];
+    setEntries(updated);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    localStorage.setItem(CYCLE_KEY, JSON.stringify({ cycle: currentCycle, day: cycleDay }));
+
+    setSymptoms({});
+    setResolved({});
+    setNotes("");
+    setSignatera("");
+    setFever("no");
+    setTemp("");
+  };
+
+  return (
+    <div style={{ padding: 20, fontFamily: "sans-serif", background: "#0f172a", color: "#e2e8f0" }}>
+
+      <h2>FOLFOX Tracker</h2>
+
+      {/* Symptoms */}
+      {NEUROPATHY_SITES.map(s => (
+        <div key={s.id}>
+          <label>{s.icon} {s.label}</label>
+          <input
+            type="range"
+            min="0"
+            max="4"
+            value={symptoms[s.id] || 0}
+            onChange={e => setSymptom(s.id, Number(e.target.value))}
+          />
+        </div>
+      ))}
+
+      {/* ADDED: Signatera */}
+      <div style={{ marginTop: 10 }}>
+        <label>Signatera (ctDNA)</label>
+        <input
+          value={signatera}
+          onChange={e => setSignatera(e.target.value)}
+          placeholder="e.g. 0.09"
+        />
+      </div>
+
+      {/* ADDED: Fever */}
+      <div style={{ marginTop: 10 }}>
+        <label>Fever?</label>
+        <select value={fever} onChange={e => setFever(e.target.value)}>
+          <option value="no">No</option>
+          <option value="yes">Yes</option>
+        </select>
+
+        {fever === "yes" && (
+          <input
+            value={temp}
+            onChange={e => setTemp(e.target.value)}
+            placeholder="Temperature °F"
+          />
+        )}
+      </div>
+
+      {/* Notes */}
+      <div style={{ marginTop: 10 }}>
+        <label>Notes</label>
+        <textarea value={notes} onChange={e => setNotes(e.target.value)} />
+      </div>
+
+      <button onClick={saveEntry} style={{ marginTop: 10 }}>
+        Save Entry
+      </button>
+
+      {/* History */}
+      <div style={{ marginTop: 20 }}>
+        <h3>History</h3>
+        {entries.map(e => (
+          <div key={e.id} style={{ padding: 10, borderBottom: "1px solid #334155" }}>
+            <div>{e.date}</div>
+            <div>Signatera: {e.signatera || "N/A"}</div>
+            <div>Fever: {e.fever}{e.temp ? ` (${e.temp}°F)` : ""}</div>
+            <div>{e.notes}</div>
+          </div>
+        ))}
+      </div>
+
+    </div>
+  );
+}
+
+export default FOLFOXTracker;
