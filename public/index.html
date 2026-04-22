@@ -1,143 +1,428 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>ChemoJournal</title>
+import { useState, useEffect, useCallback } from "react";
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+const STORAGE_KEY = "folfox-v3-entries";
+const CYCLE_KEY = "folfox-v3-cycle";
 
-<style>
-body {
-  margin: 0;
-  font-family: Inter, sans-serif;
-  background: #f6f1e8;
-  color: #1f1f1f;
+const NEUROPATHY_SITES = [
+  { id: "hands", label: "Hands", icon: "✋" },
+  { id: "feet", label: "Feet", icon: "🦶" },
+  { id: "throat_cold", label: "Cold Throat", icon: "🌡" },
+  { id: "balance", label: "Balance", icon: "⚖" },
+  { id: "dexterity", label: "Dexterity", icon: "🤏" },
+];
+
+const OTHER_SYMPTOMS = [
+  { id: "nausea", label: "Nausea", icon: "🤢" },
+  { id: "fatigue", label: "Fatigue", icon: "😴" },
+  { id: "mucositis", label: "Mucositis", icon: "👄" },
+  { id: "diarrhea", label: "Diarrhea", icon: "🚽" },
+  { id: "appetite", label: "Appetite Loss", icon: "🍽" },
+  { id: "cognitive", label: "Brain Fog", icon: "🧠" },
+];
+
+const ALL_SYMPTOMS = [...NEUROPATHY_SITES, ...OTHER_SYMPTOMS];
+const SEVERITY_LABELS = ["None", "Mild", "Moderate", "Severe", "Unbearable"];
+const SEVERITY_COLORS = ["#2d4a3e", "#4a7c59", "#c9a84c", "#d46b3a", "#b03a2e"];
+const RED_FLAG = 3;
+
+function computeInsights(entries) {
+  const insights = [];
+  const flags = [];
+  if (entries.length < 2) return { insights, flags };
+
+  const bySym = {};
+  ALL_SYMPTOMS.forEach(s => { bySym[s.id] = []; });
+  entries.forEach(e => {
+    ALL_SYMPTOMS.forEach(s => {
+      bySym[s.id].push({ cycle: e.cycle, day: e.cycleDay, val: e.symptoms?.[s.id] ?? 0, resolved: e.resolved?.[s.id] ?? false });
+    });
+  });
+
+  ALL_SYMPTOMS.forEach(s => {
+    const pts = bySym[s.id];
+    const byCycle = {};
+    pts.forEach(p => { (byCycle[p.cycle] = byCycle[p.cycle] || []).push(p); });
+    const cycleNums = Object.keys(byCycle).map(Number).sort((a,b)=>a-b);
+
+    // Cycle-over-cycle peak (neuropathy only)
+    if (NEUROPATHY_SITES.find(n=>n.id===s.id) && cycleNums.length >= 2) {
+      const peakByCycle = cycleNums.map(c => Math.max(...byCycle[c].map(p=>p.val)));
+      const last = peakByCycle[peakByCycle.length-1];
+      const prev = peakByCycle[peakByCycle.length-2];
+      if (last > prev && last >= 2) {
+        const msg = `${s.icon} ${s.label}: peak C${cycleNums[cycleNums.length-2]}→C${cycleNums[cycleNums.length-1]} (${SEVERITY_LABELS[prev]}→${SEVERITY_LABELS[last]})`;
+        if (last >= RED_FLAG) flags.push({ label: msg, detail: "Discuss oxaliplatin dose reduction with Dr. Uemura before next cycle." });
+        else insights.push({ type: "warning", label: msg });
+      }
+    }
+
+    // Consistent peak day
+    if (cycleNums.length >= 2) {
+      const peakDays = cycleNums.map(c => {
+        const mx = Math.max(...byCycle[c].map(p=>p.val));
+        if (mx === 0) return null;
+        return byCycle[c].find(p=>p.val===mx)?.day ?? null;
+      }).filter(d=>d!==null);
+      if (peakDays.length >= 2 && peakDays.every(d=>Math.abs(d-peakDays[0])<=1) && Math.max(...pts.map(p=>p.val))>=2) {
+        insights.push({ type: "info", label: `${s.icon} ${s.label}: consistently peaks Day ${peakDays[0]}±1` });
+      }
+    }
+
+    // Recovery time lengthening
+    if (cycleNums.length >= 2) {
+      const recoveryDays = cycleNums.map(c => {
+        const cPts = byCycle[c].sort((a,b)=>a.day-b.day);
+        const res = cPts.find(p=>p.resolved);
+        if (res) return res.day;
+        const lastActive = [...cPts].reverse().find(p=>p.val>0);
+        return lastActive?.day ?? 0;
+      });
+      const lengthening = recoveryDays.every((d,i)=>i===0||d>=recoveryDays[i-1]);
+      if (lengthening && recoveryDays[recoveryDays.length-1]>recoveryDays[0] && recoveryDays[recoveryDays.length-1]>=5) {
+        insights.push({ type: "warning", label: `${s.icon} ${s.label}: recovery lengthening — C${cycleNums[0]} cleared Day ${recoveryDays[0]}, C${cycleNums[cycleNums.length-1]} cleared Day ${recoveryDays[recoveryDays.length-1]}` });
+      }
+    }
+
+    // Incomplete recovery — active day 11+
+    cycleNums.forEach(c => {
+      const late = byCycle[c].filter(p=>p.day>=11&&!p.resolved&&p.val>=2);
+      if (late.length>0) {
+        const maxDay = Math.max(...late.map(p=>p.day));
+        const maxVal = Math.max(...late.map(p=>p.val));
+        insights.push({ type: "warning", label: `${s.icon} ${s.label}: still ${SEVERITY_LABELS[maxVal]} Day ${maxDay} C${c} — incomplete recovery` });
+      }
+    });
+  });
+
+  // Severe in latest entry
+  const latest = entries[entries.length-1];
+  if (latest) {
+    ALL_SYMPTOMS.forEach(s => {
+      const val = latest.symptoms?.[s.id]??0;
+      if (val>=RED_FLAG && !latest.resolved?.[s.id]) {
+        flags.push({ label: `${s.icon} ${s.label}: ${SEVERITY_LABELS[val]} (latest entry)`, detail: val===4?"Contact WVCI now.":"Contact WVCI if not improving within 24h." });
+      }
+    });
+  }
+
+  return { insights, flags };
 }
 
-.container {
-  max-width: 720px;
-  margin: auto;
-  padding: 22px;
-}
-
-.title {
-  font-size: 28px;
-  font-weight: 600;
-}
-
-.subtitle {
-  font-size: 12px;
-  color: #666;
-  margin-bottom: 16px;
-}
-
-.card {
-  background: #fff;
-  border: 1px solid #e2d9cc;
-  border-radius: 14px;
-  padding: 14px;
-  margin-bottom: 12px;
-}
-
-/* inputs */
-input, select, textarea {
-  width: 100%;
-  padding: 10px;
-  margin-top: 8px;
-  border-radius: 10px;
-  border: 1px solid #d6cdbc;
-  font-size: 14px;
-  background: #fff;
-}
-
-/* buttons */
-button {
-  width: 100%;
-  margin-top: 8px;
-  padding: 10px;
-  border-radius: 10px;
-  border: none;
-  background: #2a2a2a;
-  color: white;
-  font-weight: 500;
-}
-
-/* ✅ FIXED SEGMENTED MENU */
-.row {
-  display: flex;
-  justify-content: center;
-  gap: 0;
-  border: 1px solid #d6cdbc;
-  border-radius: 10px;
-  overflow: hidden;
-  margin-top: 8px;
-}
-
-.row button {
-  flex: 1;
-  margin: 0;
-  border-radius: 0;
-  border: none;
-  border-right: 1px solid #d6cdbc;
-  background: #fff;
-  color: #2a2a2a;
-  padding: 10px 0;
-  font-weight: 500;
-}
-
-.row button:last-child {
-  border-right: none;
-}
-
-.row button:hover {
-  background: #f3ede3;
-}
-
-/* entries */
-.entry {
-  padding: 10px 0;
-  border-bottom: 1px solid #eee;
-}
-
-.tag {
-  font-size: 11px;
-  background: #efe6d8;
-  padding: 2px 7px;
-  border-radius: 999px;
-  margin-left: 6px;
-}
-</style>
-</head>
-
-<body>
-
-<div class="container">
-
-  <div class="title">ChemoJournal</div>
-  <div class="subtitle">daily symptom tracker</div>
-
-  <div class="card">
-    <div id="dateLabel">Loading...</div>
-
-    <div class="row">
-      <button onclick="shift(-1)">‹</button>
-      <button onclick="today()">Today</button>
-      <button onclick="shift(1)">›</button>
+function SeveritySlider({ value, onChange, label, flagged }) {
+  return (
+    <div style={{ marginBottom:10 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+        <span style={{ fontSize:13, color:flagged?"#d46b3a":"#8a9bb0", fontFamily:"'DM Mono',monospace" }}>{flagged?"⚠ ":""}{label}</span>
+        <span style={{ fontSize:11, fontWeight:700, color:SEVERITY_COLORS[value], fontFamily:"'DM Mono',monospace", textTransform:"uppercase" }}>{SEVERITY_LABELS[value]}</span>
+      </div>
+      <div style={{ position:"relative", height:6, borderRadius:3, background:"#1a2535" }}>
+        <div style={{ position:"absolute", left:0, top:0, height:"100%", width:`${(value/4)*100}%`, background:SEVERITY_COLORS[value], borderRadius:3, transition:"width 0.15s,background 0.15s" }} />
+        <input type="range" min={0} max={4} value={value} onChange={e=>onChange(Number(e.target.value))}
+          style={{ position:"absolute", inset:0, opacity:0, width:"100%", cursor:"pointer", margin:0 }} />
+      </div>
     </div>
-  </div>
+  );
+}
 
-  <div class="card">
-    <input id="symptom" placeholder="Symptom" />
+function MiniChart({ entries, symptomId, label }) {
+  const recent = entries.slice(-14);
+  if (recent.length < 2 || !recent.some(e=>(e.symptoms?.[symptomId]??0)>0)) return null;
+  const W=300,H=52,P=8;
+  const pts = recent.map((e,i)=>{
+    const val=e.symptoms?.[symptomId]??0;
+    return { x: P+(i/Math.max(recent.length-1,1))*(W-P*2), y: H-P-(val/4)*(H-P*2), val, resolved: e.resolved?.[symptomId] };
+  });
+  const path=pts.map((p,i)=>`${i===0?"M":"L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  const fill=path+` L${pts[pts.length-1].x.toFixed(1)},${H} L${pts[0].x.toFixed(1)},${H} Z`;
+  const color=SEVERITY_COLORS[pts[pts.length-1]?.val??0];
+  return (
+    <div style={{ marginBottom:16 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+        <span style={{ fontSize:12, color:"#8a9bb0", fontFamily:"'DM Mono',monospace" }}>{label}</span>
+        <span style={{ fontSize:11, color, fontFamily:"'DM Mono',monospace", fontWeight:700 }}>{SEVERITY_LABELS[pts[pts.length-1]?.val??0]}</span>
+      </div>
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display:"block" }}>
+        <path d={fill} fill={color} fillOpacity={0.12}/>
+        <path d={path} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round"/>
+        {pts.map((p,i)=>(
+          <g key={i}>
+            <circle cx={p.x} cy={p.y} r={3} fill={p.resolved?"#4a9eff":color}/>
+            {p.resolved&&<text x={p.x} y={p.y-6} textAnchor="middle" fontSize={8} fill="#4a9eff">✓</text>}
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
 
-    <select id="severity"></select>
+function RecoveryTimeline({ entries }) {
+  if (entries.length < 2) return <div style={{ color:"#3a4d5e", fontSize:12, textAlign:"center", padding:"40px 0", fontFamily:"'DM Mono',monospace" }}>Log entries across multiple days to see heatmap</div>;
+  const maxCycle = Math.max(...entries.map(e=>e.cycle));
+  const curr = entries.filter(e=>e.cycle===maxCycle);
+  const days = Array.from({length:14},(_,i)=>i+1);
+  const activeSyms = ALL_SYMPTOMS.filter(s=>curr.some(e=>(e.symptoms?.[s.id]??0)>0||e.resolved?.[s.id]));
+  if (!activeSyms.length) return <div style={{ color:"#3a4d5e", fontSize:12, textAlign:"center", padding:"40px 0", fontFamily:"'DM Mono',monospace" }}>No symptoms logged this cycle</div>;
+  return (
+    <div style={{ overflowX:"auto" }}>
+      <div style={{ minWidth:380 }}>
+        <div style={{ display:"flex", marginBottom:6 }}>
+          <div style={{ width:88, flexShrink:0 }}/>
+          {days.map(d=><div key={d} style={{ flex:1, textAlign:"center", fontSize:9, color:"#3a4d5e", fontFamily:"'DM Mono',monospace" }}>{d}</div>)}
+        </div>
+        {activeSyms.map(s=>{
+          const dmap={}, rmap={};
+          curr.forEach(e=>{ dmap[e.cycleDay]=e.symptoms?.[s.id]??null; if(e.resolved?.[s.id]) rmap[e.cycleDay]=true; });
+          return (
+            <div key={s.id} style={{ display:"flex", alignItems:"center", marginBottom:5 }}>
+              <div style={{ width:88, flexShrink:0, fontSize:10, color:"#8a9bb0", fontFamily:"'DM Mono',monospace" }}>{s.icon} {s.label.substring(0,9)}</div>
+              {days.map(d=>{
+                const val=dmap[d]; const res=rmap[d];
+                const bg=res?"#1e3a5f":val===null?"#0a1520":val===0?"#1a2a1e":SEVERITY_COLORS[val];
+                return <div key={d} style={{ flex:1, height:18, margin:"0 1px", borderRadius:3, background:bg, opacity:val===null&&!res?0.2:1, display:"flex", alignItems:"center", justifyContent:"center", fontSize:8, color:"#4a9eff" }} title={res?`Day ${d}: Resolved`:val!==null?`Day ${d}: ${SEVERITY_LABELS[val]}`:`Day ${d}: no data`}>{res?"✓":""}</div>;
+              })}
+            </div>
+          );
+        })}
+        <div style={{ display:"flex", gap:10, marginTop:12, flexWrap:"wrap" }}>
+          {[1,2,3,4].map(v=><div key={v} style={{ display:"flex", alignItems:"center", gap:4 }}><div style={{ width:11, height:11, borderRadius:2, background:SEVERITY_COLORS[v] }}/><span style={{ fontSize:9, color:"#3a4d5e", fontFamily:"'DM Mono',monospace" }}>{SEVERITY_LABELS[v]}</span></div>)}
+          <div style={{ display:"flex", alignItems:"center", gap:4 }}><div style={{ width:11, height:11, borderRadius:2, background:"#1e3a5f", display:"flex", alignItems:"center", justifyContent:"center", fontSize:7, color:"#4a9eff" }}>✓</div><span style={{ fontSize:9, color:"#3a4d5e", fontFamily:"'DM Mono',monospace" }}>Resolved</span></div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-    <select id="mood">
-      <option>Neutral</option>
-      <option>Good</option>
-      <option>Bad</option>
-      <option>Anxious</option>
-      <option>Tired</option>
-    </select>
+function AIAnalysis({ entries, currentCycle }) {
+  const [analysis, setAnalysis]=useState(""); const [loading, setLoading]=useState(false);
+  const analyze = useCallback(async()=>{
+    if(!entries.length) return;
+    setLoading(true); setAnalysis("");
+    const summary=entries.slice(-14).map(e=>({ date:e.date, cycle:e.cycle, day:e.cycleDay, symptoms:e.symptoms, resolved:e.resolved, notes:e.notes }));
+    try {
+      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+        model:"claude-sonnet-4-20250514", max_tokens:1000,
+        system:`Oncology clinical assistant. Patient: stage IV CRC, Modified FOLFOX6 Q14D x12. DPYD intermediate metabolizer AS 1.5, 5-FU 50% dose. Oxaliplatin full dose. Pre-existing motor neuropathy affecting gait. CMS4 mesenchymal. Prior hepatic ablation R seg 8. MSS. 'resolved' field = patient explicitly marked symptom resolved. Analyze: (1) meaningful patterns, (2) call-clinic-now flags, (3) next-appointment flags, (4) recovery completeness, (5) neuropathy trajectory vs pre-existing deficit. Mechanistic, specific, no padding. Severity: 0=None 1=Mild 2=Moderate 3=Severe 4=Unbearable.`,
+        messages:[{role:"user",content:`Cycle ${currentCycle}.\n${JSON.stringify(summary,null,2)}`}]
+      })});
+      const data=await res.json();
+      setAnalysis(data.content?.filter(b=>b.type==="text").map(b=>b.text).join("")||"No response.");
+    } catch { setAnalysis("Analysis unavailable."); }
+    setLoading(false);
+  },[entries,currentCycle]);
+  return (
+    <div style={{ background:"#0d1821", border:"1px solid #1e3a5f", borderRadius:12, padding:20 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+        <span style={{ fontSize:10, color:"#4a9eff", textTransform:"uppercase", letterSpacing:"0.12em", fontFamily:"'DM Mono',monospace" }}>AI Pattern Analysis</span>
+        <button onClick={analyze} disabled={loading||!entries.length} style={{ background:loading?"#1a2535":"#1e3a5f", border:"none", borderRadius:6, color:loading?"#8a9bb0":"#4a9eff", fontSize:10, fontFamily:"'DM Mono',monospace", padding:"6px 14px", cursor:loading?"default":"pointer", textTransform:"uppercase", letterSpacing:"0.08em" }}>
+          {loading?"Analyzing...":!entries.length?"No Data":"Analyze"}
+        </button>
+      </div>
+      {analysis
+        ?<div style={{ fontSize:13, color:"#c8d8e8", lineHeight:1.75, fontFamily:"'Spectral',Georgia,serif", whiteSpace:"pre-wrap" }}>{analysis}</div>
+        :<div style={{ fontSize:12, color:"#3a4d5e", fontFamily:"'DM Mono',monospace", textAlign:"center", padding:"20px 0" }}>{!entries.length?"Log entries first":"Press Analyze to review patterns"}</div>
+      }
+    </div>
+  );
+}
 
-    <input id="med
+export default function FOLFOXTracker() {
+  const [tab,setTab]=useState("log");
+  const [entries,setEntries]=useState([]);
+  const [currentCycle,setCurrentCycle]=useState(1);
+  const [cycleDay,setCycleDay]=useState(1);
+  const [symptoms,setSymptoms]=useState({});
+  const [resolved,setResolved]=useState({});
+  const [notes,setNotes]=useState("");
+  const [saved,setSaved]=useState(false);
+
+  useEffect(()=>{
+    (async()=>{
+      try{const r=await window.storage.get(STORAGE_KEY);if(r)setEntries(JSON.parse(r.value));}catch{}
+      try{const r=await window.storage.get(CYCLE_KEY);if(r){const c=JSON.parse(r.value);setCurrentCycle(c.cycle??1);setCycleDay(c.day??1);}}catch{}
+    })();
+  },[]);
+
+  const setSym=(id,val)=>{ setSymptoms(s=>({...s,[id]:val})); if(val>0)setResolved(r=>({...r,[id]:false})); };
+  const toggleResolved=(id)=>setResolved(r=>{ const next=!r[id]; if(next)setSymptoms(s=>({...s,[id]:0})); return{...r,[id]:next}; });
+
+  const saveEntry=async()=>{
+    const entry={id:Date.now(),date:new Date().toISOString(),cycle:currentCycle,cycleDay,symptoms:{...symptoms},resolved:{...resolved},notes};
+    const updated=[...entries,entry];
+    setEntries(updated);
+    try{await window.storage.set(STORAGE_KEY,JSON.stringify(updated));await window.storage.set(CYCLE_KEY,JSON.stringify({cycle:currentCycle,day:cycleDay}));}catch{}
+    setSymptoms({});setResolved({});setNotes("");setSaved(true);setTimeout(()=>setSaved(false),2500);
+  };
+
+  const deleteEntry=async(id)=>{ const u=entries.filter(e=>e.id!==id); setEntries(u); try{await window.storage.set(STORAGE_KEY,JSON.stringify(u));}catch{}; };
+
+  const {insights=[],flags=[]}=entries.length>=2?computeInsights(entries):{};
+  const liveFlags=ALL_SYMPTOMS.filter(s=>(symptoms[s.id]??0)>=RED_FLAG&&!resolved[s.id]);
+
+  const T=(t)=>({flex:1,padding:"8px 0",background:tab===t?"#1e3a5f":"transparent",border:"none",color:tab===t?"#4a9eff":"#3a4d5e",fontFamily:"'DM Mono',monospace",fontSize:9,textTransform:"uppercase",letterSpacing:"0.07em",cursor:"pointer",borderRadius:6,transition:"all 0.15s"});
+
+  const Card=({children,accent})=>(<div style={{background:"#0d1821",border:`1px solid ${accent||"#1a2535"}`,borderRadius:12,padding:18,marginBottom:14}}>{children}</div>);
+  const SectionLabel=({children,color})=>(<div style={{fontSize:10,color:color||"#8a9bb0",textTransform:"uppercase",letterSpacing:"0.15em",marginBottom:14,fontFamily:"'DM Mono',monospace"}}>{children}</div>);
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#080f18", color:"#c8d8e8", paddingBottom:60 }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap');
+        *{box-sizing:border-box}
+        ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:#0d1821}::-webkit-scrollbar-thumb{background:#1e3a5f;border-radius:2px}
+        input[type=range]{-webkit-appearance:none;appearance:none}
+        input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#4a9eff;cursor:pointer;margin-top:-5px}
+        input[type=range]::-webkit-slider-runnable-track{height:6px}
+      `}</style>
+
+      {/* Header */}
+      <div style={{padding:"18px 18px 12px",background:"#080f18",borderBottom:"1px solid #0d1821",position:"sticky",top:0,zIndex:10}}>
+        <div style={{fontSize:9,color:"#4a9eff",textTransform:"uppercase",letterSpacing:"0.2em",marginBottom:2,fontFamily:"'DM Mono',monospace"}}>FOLFOX6 · Modified</div>
+        <div style={{fontSize:18,fontFamily:"'Spectral',serif",color:"#e8f0f8",fontWeight:600,marginBottom:10}}>Cycle {currentCycle} · Day {cycleDay}</div>
+
+        {[{label:"CYCLE",n:12,val:currentCycle,set:setCurrentCycle},{label:"CYCLE DAY",n:14,val:cycleDay,set:setCycleDay}].map(({label,n,val,set})=>(
+          <div key={label} style={{marginBottom:8}}>
+            <div style={{fontSize:9,color:"#3a4d5e",marginBottom:4,fontFamily:"'DM Mono',monospace"}}>{label}</div>
+            <div style={{display:"flex",gap:3,flexWrap:"wrap"}}>
+              {Array.from({length:n},(_,i)=>i+1).map(k=>(
+                <button key={k} onClick={()=>set(k)} style={{width:22,height:22,borderRadius:4,background:val===k?"#1e3a5f":"#0d1821",border:val===k?"1px solid #4a9eff":"1px solid #1a2535",color:val===k?"#4a9eff":"#3a4d5e",fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>{k}</button>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {flags.length>0&&(
+          <div style={{marginTop:12,background:"#140808",border:"1px solid #7a2020",borderRadius:8,padding:"10px 14px"}}>
+            <div style={{fontSize:10,color:"#b03a2e",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:6,fontFamily:"'DM Mono',monospace"}}>⚠ Red Flags</div>
+            {flags.map((f,i)=>(
+              <div key={i} style={{marginBottom:5}}>
+                <div style={{fontSize:12,color:"#e8a090",fontFamily:"'DM Mono',monospace"}}>{f.label}</div>
+                {f.detail&&<div style={{fontSize:11,color:"#6a3030",marginTop:2,fontFamily:"'DM Mono',monospace"}}>{f.detail}</div>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Tabs */}
+      <div style={{display:"flex",gap:3,padding:"10px 18px",background:"#080f18"}}>
+        {["log","timeline","charts","insights","history","ai"].map(t=>(
+          <button key={t} onClick={()=>setTab(t)} style={T(t)}>{t}{t==="insights"&&insights.length>0?` (${insights.length})`:""}</button>
+        ))}
+      </div>
+
+      <div style={{padding:"0 18px"}}>
+
+        {tab==="log"&&(
+          <div>
+            {liveFlags.length>0&&(
+              <div style={{background:"#140808",border:"1px solid #b03a2e",borderRadius:10,padding:"12px 16px",marginBottom:14}}>
+                <div style={{fontSize:11,color:"#b03a2e",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:8,fontFamily:"'DM Mono',monospace"}}>⚠ Severe Symptom — Contact WVCI</div>
+                {liveFlags.map(s=><div key={s.id} style={{fontSize:12,color:"#e8a090",marginBottom:4,fontFamily:"'DM Mono',monospace"}}>{s.icon} {s.label}: {SEVERITY_LABELS[symptoms[s.id]??0]}</div>)}
+                <div style={{fontSize:11,color:"#5a2828",marginTop:8,fontFamily:"'DM Mono',monospace"}}>Call WVCI nurse line. Have after-hours number saved.</div>
+              </div>
+            )}
+
+            <Card>
+              <SectionLabel color="#4a9eff">Neuropathy</SectionLabel>
+              {NEUROPATHY_SITES.map(s=>(
+                <div key={s.id}>
+                  <SeveritySlider label={`${s.icon} ${s.label}`} value={symptoms[s.id]??0} onChange={v=>setSym(s.id,v)} flagged={(symptoms[s.id]??0)>=RED_FLAG&&!resolved[s.id]}/>
+                  <div style={{display:"flex",justifyContent:"flex-end",marginTop:-4,marginBottom:12}}>
+                    <button onClick={()=>toggleResolved(s.id)} style={{background:resolved[s.id]?"#1e3a5f":"#0a1520",border:`1px solid ${resolved[s.id]?"#4a9eff":"#1a2535"}`,borderRadius:5,padding:"3px 10px",color:resolved[s.id]?"#4a9eff":"#3a4d5e",fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em"}}>
+                      {resolved[s.id]?"✓ Resolved":"Mark Resolved"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </Card>
+
+            <Card>
+              <SectionLabel color="#c9a84c">Other Symptoms</SectionLabel>
+              {OTHER_SYMPTOMS.map(s=>(
+                <div key={s.id}>
+                  <SeveritySlider label={`${s.icon} ${s.label}`} value={symptoms[s.id]??0} onChange={v=>setSym(s.id,v)} flagged={(symptoms[s.id]??0)>=RED_FLAG&&!resolved[s.id]}/>
+                  <div style={{display:"flex",justifyContent:"flex-end",marginTop:-4,marginBottom:12}}>
+                    <button onClick={()=>toggleResolved(s.id)} style={{background:resolved[s.id]?"#1e3a5f":"#0a1520",border:`1px solid ${resolved[s.id]?"#4a9eff":"#1a2535"}`,borderRadius:5,padding:"3px 10px",color:resolved[s.id]?"#4a9eff":"#3a4d5e",fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em"}}>
+                      {resolved[s.id]?"✓ Resolved":"Mark Resolved"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </Card>
+
+            <Card>
+              <SectionLabel>Notes</SectionLabel>
+              <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Additional observations..." rows={3}
+                style={{width:"100%",background:"#080f18",border:"1px solid #1a2535",borderRadius:8,color:"#c8d8e8",fontFamily:"'Spectral',serif",fontSize:14,padding:"10px 12px",resize:"vertical",outline:"none",lineHeight:1.6}}/>
+            </Card>
+
+            <button onClick={saveEntry} style={{width:"100%",padding:"14px 0",background:saved?"#1a2e1e":"#1e3a5f",border:"none",borderRadius:10,color:saved?"#4a9e6a":"#4a9eff",fontFamily:"'DM Mono',monospace",fontSize:12,textTransform:"uppercase",letterSpacing:"0.12em",cursor:"pointer",transition:"all 0.2s"}}>
+              {saved?"✓ Entry Saved":"Log Entry"}
+            </button>
+          </div>
+        )}
+
+        {tab==="timeline"&&(
+          <Card>
+            <SectionLabel color="#4a9eff">Recovery Heatmap · Current Cycle</SectionLabel>
+            <div style={{fontSize:11,color:"#3a4d5e",marginBottom:14,fontFamily:"'DM Mono',monospace"}}>Blue ✓ = explicitly marked resolved</div>
+            <RecoveryTimeline entries={entries}/>
+          </Card>
+        )}
+
+        {tab==="charts"&&(
+          entries.length<2
+            ?<div style={{color:"#3a4d5e",fontSize:12,textAlign:"center",padding:"60px 0",fontFamily:"'DM Mono',monospace"}}>Need 2+ entries to show charts</div>
+            :<>
+              <Card><SectionLabel color="#4a9eff">Neuropathy Trends</SectionLabel>{NEUROPATHY_SITES.map(s=><MiniChart key={s.id} entries={entries} symptomId={s.id} label={`${s.icon} ${s.label}`}/>)}</Card>
+              <Card><SectionLabel color="#c9a84c">Other Symptom Trends</SectionLabel>{OTHER_SYMPTOMS.map(s=><MiniChart key={s.id} entries={entries} symptomId={s.id} label={`${s.icon} ${s.label}`}/>)}</Card>
+            </>
+        )}
+
+        {tab==="insights"&&(
+          insights.length===0
+            ?<div style={{color:"#3a4d5e",fontSize:12,textAlign:"center",padding:"60px 0",fontFamily:"'DM Mono',monospace"}}>{entries.length<2?"Log entries across multiple days to generate insights":"No patterns detected yet"}</div>
+            :insights.map((ins,i)=>(
+              <div key={i} style={{background:"#0d1821",border:`1px solid ${ins.type==="warning"?"#5a3a1a":"#1a2535"}`,borderLeft:`3px solid ${ins.type==="warning"?"#c9a84c":"#1e3a5f"}`,borderRadius:10,padding:"12px 16px",marginBottom:10}}>
+                <div style={{fontSize:12,color:ins.type==="warning"?"#c9a84c":"#8a9bb0",fontFamily:"'DM Mono',monospace",lineHeight:1.6}}>{ins.label}</div>
+              </div>
+            ))
+        )}
+
+        {tab==="history"&&(
+          entries.length===0
+            ?<div style={{color:"#3a4d5e",fontSize:12,textAlign:"center",padding:"60px 0",fontFamily:"'DM Mono',monospace"}}>No entries yet</div>
+            :[...entries].reverse().map(e=>{
+              const active=Object.entries(e.symptoms||{}).filter(([,v])=>v>0);
+              const res=Object.entries(e.resolved||{}).filter(([,v])=>v);
+              return (
+                <div key={e.id} style={{background:"#0d1821",border:"1px solid #1a2535",borderRadius:10,padding:16,marginBottom:10}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
+                    <div>
+                      <span style={{fontSize:12,color:"#4a9eff",fontFamily:"'DM Mono',monospace"}}>C{e.cycle} · D{e.cycleDay}</span>
+                      <div style={{fontSize:10,color:"#3a4d5e",marginTop:2,fontFamily:"'DM Mono',monospace"}}>{new Date(e.date).toLocaleDateString("en-US",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}</div>
+                    </div>
+                    <button onClick={()=>deleteEntry(e.id)} style={{background:"none",border:"none",color:"#3a4d5e",cursor:"pointer",fontSize:18}}>×</button>
+                  </div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+                    {active.map(([id,val])=>{ const sym=ALL_SYMPTOMS.find(s=>s.id===id); return <span key={id} style={{fontSize:10,background:"#0a1520",border:`1px solid ${SEVERITY_COLORS[val]}40`,color:SEVERITY_COLORS[val],borderRadius:4,padding:"3px 8px",fontFamily:"'DM Mono',monospace"}}>{sym?.icon} {sym?.label}: {SEVERITY_LABELS[val]}</span>; })}
+                    {res.map(([id])=>{ const sym=ALL_SYMPTOMS.find(s=>s.id===id); return <span key={`r-${id}`} style={{fontSize:10,background:"#0a1520",border:"1px solid #1e3a5f",color:"#4a9eff",borderRadius:4,padding:"3px 8px",fontFamily:"'DM Mono',monospace"}}>✓ {sym?.icon} {sym?.label}</span>; })}
+                    {!active.length&&!res.length&&<span style={{fontSize:11,color:"#2d4a3e",fontFamily:"'DM Mono',monospace"}}>All clear</span>}
+                  </div>
+                  {e.notes&&<div style={{marginTop:10,fontSize:13,color:"#8a9bb0",fontFamily:"'Spectral',serif",fontStyle:"italic",lineHeight:1.5}}>"{e.notes}"</div>}
+                </div>
+              );
+            })
+        )}
+
+        {tab==="ai"&&(
+          <div>
+            <div style={{fontSize:11,color:"#3a4d5e",marginBottom:14,lineHeight:1.6,fontFamily:"'DM Mono',monospace"}}>Reviews entries for patterns, incomplete recovery, neuropathy trajectory, and clinic-contact flags. Context includes DPYD status, pre-existing motor neuropathy, and full-dose oxaliplatin.</div>
+            <AIAnalysis entries={entries} currentCycle={currentCycle}/>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
